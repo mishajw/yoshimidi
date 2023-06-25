@@ -54,11 +54,7 @@ def _create_token(
     time: Optional[float] = None,
 ) -> Float[np.ndarray, "vocab"]:
     kind_array = np.array(
-        [
-            kind == "on",
-            kind == "off",
-            kind == "pause",
-        ],
+        [kind == "on", kind == "off", kind == "pause"],
         dtype=np.float16,
     )
 
