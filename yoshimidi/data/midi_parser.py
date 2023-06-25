@@ -27,14 +27,6 @@ def parse(path: pathlib.Path) -> ParseResult:
         if len(output.getvalue()) > 0:
             counters["file_stdout_stderr_written_to"] += 1
             return ParseResult(tracks=[], counters=counters)
-        tracks_with_failures: List[Optional[Track]] = [
-            _parse_track(midi_track, counters) for midi_track in midi_file
-        ]
-        tracks: List[Track] = [
-            track for track in tracks_with_failures if track is not None
-        ]
-        counters["successful_files"] += 1
-        return ParseResult(tracks=tracks, counters=counters)
     except UnicodeDecodeError:
         counters["unicode_decode_error"] += 1
         return ParseResult(tracks=[], counters=counters)
@@ -43,6 +35,12 @@ def parse(path: pathlib.Path) -> ParseResult:
             raise e
         counters["bad_header_chunk"] += 1
         return ParseResult(tracks=[], counters=counters)
+    tracks_with_failures: List[Optional[Track]] = [
+        _parse_track(midi_track, counters) for midi_track in midi_file
+    ]
+    tracks: List[Track] = [track for track in tracks_with_failures if track is not None]
+    counters["successful_files"] += 1
+    return ParseResult(tracks=tracks, counters=counters)
 
 
 def _parse_track(
