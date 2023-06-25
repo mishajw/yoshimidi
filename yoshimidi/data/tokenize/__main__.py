@@ -61,16 +61,9 @@ def _create_token(
     note_array = np.zeros((12,), dtype=np.float16)
     octave_array = np.zeros((11,), dtype=np.float16)
     if note is not None:
-        match = _NOTE_REGEX.match(note)
-        assert match is not None
-        note_index = _NOTES.index(match[1])
-        note_octave = int(match[2])
-        assert 3 <= note_octave <= 10, note
-        if note_octave > 10:
-            print(note)
-            note_octave = 10
-        note_array[note_index] = 1
-        octave_array[note_octave - 3] = 1
+        assert 0 <= note < 128, note
+        note_array[note % 12] = 1
+        octave_array[note // 12] = 1
 
     time_array = np.zeros((1,), dtype=np.float16)
     if time is not None:

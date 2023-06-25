@@ -52,6 +52,9 @@ def _parse_track(
     for message in midi_track:
         if message.is_meta or message.type == "sysex":
             continue
+        if message.type == "stop":
+            counters["bad_stop"] += 1
+            return None
         _parse_event(
             message,
             track.channels[message.channel],
@@ -81,7 +84,7 @@ def _parse_event(
     if message.type == "note_on":
         channel.notes.append(
             Note(
-                note=str(message.note),
+                note=message.note,
                 kind="on",
                 velocity=message.velocity,
                 time_secs=time_secs,
@@ -90,7 +93,7 @@ def _parse_event(
     elif message.type == "note_off":
         channel.notes.append(
             Note(
-                note=str(message.note),
+                note=message.note,
                 kind="off",
                 velocity=message.velocity,
                 time_secs=time_secs,

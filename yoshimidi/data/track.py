@@ -21,7 +21,7 @@ class Channel(msgspec.Struct):
 
 
 class Note(msgspec.Struct):
-    note: str
+    note: int
     kind: Literal["on", "off"]
     velocity: int
     time_secs: float
