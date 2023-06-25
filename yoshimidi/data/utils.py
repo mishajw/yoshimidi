@@ -1,6 +1,6 @@
-from contextlib import contextmanager
 import io
 import sys
+from contextlib import contextmanager
 
 
 @contextmanager
@@ -13,4 +13,3 @@ def capture_output():
     yield in_memory
     sys.stdout = stdout
     sys.stderr = stderr
-

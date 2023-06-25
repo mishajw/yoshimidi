@@ -1,9 +1,7 @@
 import multiprocessing
 import pathlib
 import shutil
-import tarfile
 from typing import DefaultDict
-from urllib import request
 
 import fire
 import msgspec

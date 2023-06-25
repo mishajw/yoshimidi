@@ -1,15 +1,14 @@
-from dataclasses import dataclass
 import pathlib
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Optional
+from dataclasses import dataclass
+from typing import DefaultDict, List, Optional
 
 from MIDI import MIDIFile
 from MIDI.chunks.track import Track as MIDITrack
 from MIDI.Events import MIDIEvent
 from MIDI.Events.meta import MetaEvent, MetaEventKinds
-from loguru import logger
-from yoshimidi.data import utils
 
+from yoshimidi.data import utils
 from yoshimidi.data.track import Channel, Note, Track, TrackMetadata
 
 
@@ -19,8 +18,8 @@ class ParseResult:
     counters: DefaultDict[str, int]
 
 
-def parse(path: pathlib.Path) -> List[Track]:
-    counters = DefaultDict(int)
+def parse(path: pathlib.Path) -> ParseResult:
+    counters: DefaultDict[str, int] = DefaultDict(int)
     midi_file = MIDIFile(path)
     try:
         with utils.capture_output() as output:
@@ -28,8 +27,12 @@ def parse(path: pathlib.Path) -> List[Track]:
         if len(output.getvalue()) > 0:
             counters["file_stdout_stderr_written_to"] += 1
             return ParseResult(tracks=[], counters=counters)
-        tracks: List[Optional[Track]] = [_parse_track(midi_track, counters) for midi_track in midi_file]
-        tracks: List[Track] = [track for track in tracks if track is not None]
+        tracks_with_failures: List[Optional[Track]] = [
+            _parse_track(midi_track, counters) for midi_track in midi_file
+        ]
+        tracks: List[Track] = [
+            track for track in tracks_with_failures if track is not None
+        ]
         counters["successful_files"] += 1
         return ParseResult(tracks=tracks, counters=counters)
     except UnicodeDecodeError:
@@ -42,7 +45,9 @@ def parse(path: pathlib.Path) -> List[Track]:
         return ParseResult(tracks=[], counters=counters)
 
 
-def _parse_track(midi_track: MIDITrack, counters: DefaultDict[str, int]) -> Optional[Track]:
+def _parse_track(
+    midi_track: MIDITrack, counters: DefaultDict[str, int]
+) -> Optional[Track]:
     with utils.capture_output() as output:
         midi_track.parse()
     if len(output.getvalue()) > 0:
@@ -66,7 +71,9 @@ def _parse_track(midi_track: MIDITrack, counters: DefaultDict[str, int]) -> Opti
     }
     counters["successful_tracks"] += 1
     counters["successful_channels"] += len(track.channels)
-    counters["successful_notes"] += sum(len(channel.notes) for channel in track.channels.values())
+    counters["successful_notes"] += sum(
+        len(channel.notes) for channel in track.channels.values()
+    )
     return track
 
 
@@ -74,7 +81,9 @@ def _parse_metadata(event: MetaEvent, output: TrackMetadata) -> None:
     if event.type == MetaEventKinds.Set_Tempo.value:
         output.bpm = event.attributes["bpm"]
     elif event.type == MetaEventKinds.Time_Signature.value:
-        output.time_signature = f"{event.attributes['numerator']}/{event.attributes['denominator']}"
+        output.time_signature = (
+            f"{event.attributes['numerator']}/{event.attributes['denominator']}"
+        )
     elif event.type == MetaEventKinds.Key_Signature.value:
         output.key = f"{event.attributes['key']} {event.attributes['mode']}"
 
