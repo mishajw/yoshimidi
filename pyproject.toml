@@ -12,13 +12,16 @@ requests = "^2.31.0"
 tqdm = "^4.65.0"
 msgspec = "^0.16.0"
 loguru = "^0.7.0"
-midifile = "^0.2.0"
 pygame = "^2.5.0"
+jaxtyping = "^0.2.20"
+seaborn = "^0.12.2"
+mido = "^1.2.10"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.3"
 mypy = "^1.4.0"
 types-requests = "^2.31.0.1"
+ipykernel = "^6.23.3"
 
 [build-system]
 requires = ["poetry-core"]

@@ -3,12 +3,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import DefaultDict, List, Optional
 
-from MIDI import MIDIFile
-from MIDI.chunks.track import Track as MIDITrack
-from MIDI.Events import MIDIEvent
-from MIDI.Events.meta import MetaEvent, MetaEventKinds
+import mido
+from mido import Message, MidiFile, MidiTrack
+from mido.midifiles.meta import KeySignatureError
 
-from yoshimidi.data import utils
 from yoshimidi.data.track import Channel, Note, Track, TrackMetadata
 
 
@@ -20,48 +18,66 @@ class ParseResult:
 
 def parse(path: pathlib.Path) -> ParseResult:
     counters: DefaultDict[str, int] = DefaultDict(int)
-    midi_file = MIDIFile(path)
     try:
-        with utils.capture_output() as output:
-            midi_file.parse()
-        if len(output.getvalue()) > 0:
-            counters["file_stdout_stderr_written_to"] += 1
+        midi_file = MidiFile(path)
+    except (OSError, ValueError) as e:
+        if "MThd not found" in str(e):
+            counters["bad_header_chunk"] += 1
             return ParseResult(tracks=[], counters=counters)
-    except UnicodeDecodeError:
-        counters["unicode_decode_error"] += 1
-        return ParseResult(tracks=[], counters=counters)
-    except Exception as e:
-        if "Header chunk must have length" not in str(e):
+        elif "data byte must be in range" in str(e):
+            counters["bad_data_byte"] += 1
+            return ParseResult(tracks=[], counters=counters)
+        elif "running status without last_status" in str(e):
+            counters["bad_status"] += 1
+            return ParseResult(tracks=[], counters=counters)
+        else:
             raise e
-        counters["bad_header_chunk"] += 1
+    except IndexError:
+        counters["bad_list_index"] += 1
+        return ParseResult(tracks=[], counters=counters)
+    except KeySignatureError:
+        counters["bad_key_signature"] += 1
+        return ParseResult(tracks=[], counters=counters)
+    except EOFError:
+        counters["bad_eof"] += 1
         return ParseResult(tracks=[], counters=counters)
     tracks_with_failures: List[Optional[Track]] = [
-        _parse_track(midi_track, counters) for midi_track in midi_file
+        _parse_track(midi_track, counters, ticks_per_beat=midi_file.ticks_per_beat)
+        for midi_track in midi_file.tracks
     ]
     tracks: List[Track] = [track for track in tracks_with_failures if track is not None]
+    if len(tracks) == 0:
+        counters["bad_empty_files"] += 1
+        return ParseResult(tracks=[], counters=counters)
     counters["successful_files"] += 1
     return ParseResult(tracks=tracks, counters=counters)
 
 
 def _parse_track(
-    midi_track: MIDITrack, counters: DefaultDict[str, int]
+    midi_track: MidiTrack, counters: DefaultDict[str, int], *, ticks_per_beat: float
 ) -> Optional[Track]:
-    with utils.capture_output() as output:
-        midi_track.parse()
-    if len(output.getvalue()) > 0:
-        counters["track_stdout_stderr_written_to"] += 1
-        return None
     track = Track(
         channels=defaultdict(lambda: Channel(notes=[], program_nums=[])),
         metadata=TrackMetadata(),
     )
-    for midi_event in midi_track:
-        if isinstance(midi_event, MetaEvent):
-            _parse_metadata(midi_event, track.metadata)
-        elif isinstance(midi_event, MIDIEvent):
-            _parse_event(midi_event, track.channels[midi_event.channel])
-        else:
-            raise ValueError(f"Unrecognized event type: {type(midi_event)}")
+
+    tempos = [message.tempo for message in midi_track if message.type == "set_tempo"]
+    if len(tempos) > 1:
+        counters["bad_multiple_tempos"] += 1
+        return None
+    tempo = tempos[0] if tempos else 500000
+
+    message: Message
+    for message in midi_track:
+        if message.is_meta or message.type == "sysex":
+            continue
+        _parse_event(
+            message,
+            track.channels[message.channel],
+            ticks_per_beat=ticks_per_beat,
+            tempo=tempo,
+        )
+
     track.channels = {
         channel_num: channel
         for channel_num, channel in track.channels.items()
@@ -75,38 +91,27 @@ def _parse_track(
     return track
 
 
-def _parse_metadata(event: MetaEvent, output: TrackMetadata) -> None:
-    if event.type == MetaEventKinds.Set_Tempo.value:
-        output.bpm = event.attributes["bpm"]
-    elif event.type == MetaEventKinds.Time_Signature.value:
-        output.time_signature = (
-            f"{event.attributes['numerator']}/{event.attributes['denominator']}"
-        )
-    elif event.type == MetaEventKinds.Key_Signature.value:
-        output.key = f"{event.attributes['key']} {event.attributes['mode']}"
-
-
-def _parse_event(event: MIDIEvent, channel: Channel) -> None:
-    command_str = MIDIEvent.commands.get(event.command, None)
-    if command_str == "NOTE_ON":
+def _parse_event(
+    message: Message, channel: Channel, *, ticks_per_beat: float, tempo: float
+) -> None:
+    time_secs = mido.tick2second(
+        tick=message.time, ticks_per_beat=ticks_per_beat, tempo=tempo
+    )
+    if message.type == "note_on":
         channel.notes.append(
             Note(
-                note=str(event.message.note),
+                note=str(message.note),
                 kind="on",
-                velocity=event.message.velocity,
-                start=event.time,
+                velocity=message.velocity,
+                time_secs=time_secs,
             )
         )
-    elif command_str == "NOTE_OFF":
+    elif message.type == "note_off":
         channel.notes.append(
             Note(
-                note=str(event.message.note),
+                note=str(message.note),
                 kind="off",
-                velocity=event.message.velocity,
-                start=event.time,
+                velocity=message.velocity,
+                time_secs=time_secs,
             )
-        )
-    elif command_str == "PROGRAM_CHANGE":
-        channel.program_nums.append(
-            event.message.value,
         )

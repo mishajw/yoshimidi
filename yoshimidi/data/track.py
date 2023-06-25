@@ -24,4 +24,4 @@ class Note(msgspec.Struct):
     note: str
     kind: Literal["on", "off"]
     velocity: int
-    start: float
+    time_secs: float
