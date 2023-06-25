@@ -1,6 +1,5 @@
 import itertools
 import pathlib
-import re
 from typing import List, Literal, Optional
 
 import fire
@@ -9,10 +8,6 @@ import numpy as np
 from jaxtyping import Float, Int
 
 from yoshimidi.data.track import Channel, Track
-
-_NOTE_REGEX = re.compile(r"([A-G][b#]?)(\d+)")
-_NOTES = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
-
 
 # jaxtyping
 seq, vocab = None, None
@@ -42,19 +37,20 @@ def _tokenize_channel(channel: Channel) -> Int[np.ndarray, "seq vocab"]:  # noqa
         result.append(_create_token(kind=note.kind, note=note.note))
         if note_index == len(channel.notes) - 1:
             continue
-        pause_time = channel.notes[note_index + 1].start - note.start
+        pause_time = channel.notes[note_index + 1].time_secs - note.time_secs
         if pause_time > 0:
             result.append(_create_token(kind="pause", time=pause_time))
+    result.append(_create_token(kind="end"))
     return np.stack(result)
 
 
 def _create_token(
-    kind: Literal["on", "off", "pause"],
-    note: Optional[str] = None,
+    kind: Literal["on", "off", "pause", "end"],
+    note: Optional[int] = None,
     time: Optional[float] = None,
 ) -> Float[np.ndarray, "vocab"]:
     kind_array = np.array(
-        [kind == "on", kind == "off", kind == "pause"],
+        [kind == "on", kind == "off", kind == "pause", kind == "end"],
         dtype=np.float16,
     )
 

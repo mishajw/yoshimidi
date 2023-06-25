@@ -44,7 +44,7 @@ def _parse_data_multiprocessing(
     output_file: pathlib.Path,
 ):
     counters: DefaultDict[str, int] = DefaultDict(int)
-    midi_files = list(input_dir.rglob("*.mid"))
+    midi_files = list(input_dir.rglob("*.mid"))[19200:]
     with multiprocessing.Pool(processes=4) as pool, output_file.open("wb") as f:
         results = pool.imap_unordered(midi_parser.parse, midi_files)
         pbar = tqdm.tqdm(results, total=len(midi_files))
