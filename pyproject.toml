@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "yoshimidi"
+version = "0.1.0"
+description = ""
+authors = ["Misha Wagner <mishajw@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fire = "^0.5.0"
+requests = "^2.31.0"
+tqdm = "^4.65.0"
+msgspec = "^0.16.0"
+loguru = "^0.7.0"
+midifile = "^0.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
