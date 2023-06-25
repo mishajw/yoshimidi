@@ -9,7 +9,7 @@ import requests
 import tqdm
 from loguru import logger
 
-from yoshimidi.data import midi_parser
+from yoshimidi.data.parse import midi_parser
 
 _LAKH_MIDI_DATASET_URL = "http://hog.ee.columbia.edu/craffel/lmd/lmd_full.tar.gz"
 
