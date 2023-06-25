@@ -1,16 +1,18 @@
-import itertools
 import pathlib
 from typing import List, Literal, Optional
 
 import fire
 import msgspec
 import numpy as np
-from jaxtyping import Float, Int
+import tqdm
+from jaxtyping import Float
 
 from yoshimidi.data.track import Channel, Track
 
 # jaxtyping
 seq, vocab = None, None
+
+_VOCAB = 28  # 4 + 12 + 11 + 1
 
 
 def main(
@@ -22,50 +24,87 @@ def main(
     assert input_file.exists(), f"input_file does not exist: {input_file}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    lines_per_file = 2**22
+    mmap_index = -1
+    mmap_lines = lines_per_file
     with input_file.open("r") as f:
-        for line in itertools.islice(f, 100):
-            tracks = msgspec.json.decode(line, type=List[Track])
-            for track in tracks:
-                for channel in track.channels.values():
-                    _tokenize_channel(channel)
+        channel_iter = (
+            channel
+            for line in f
+            for track in msgspec.json.decode(line, type=List[Track])
+            for channel in track.channels.values()
+            if len(channel.notes) > 0
+        )
+        pbar = tqdm.tqdm(channel_iter, desc="Tokenizing channels")
+        for channel in pbar:
+            channel_lines = len(channel.notes) * 2
+            if mmap_lines + channel_lines > lines_per_file:
+                mmap_index += 1
+                mmap_lines = 0
+                mmap = np.memmap(
+                    output_dir / f"tokens_{mmap_index:04d}.npy",
+                    dtype=np.float32,
+                    shape=(lines_per_file, _VOCAB),
+                    mode="w+",
+                )
+            _tokenize_channel(channel, mmap[mmap_lines : mmap_lines + channel_lines])
+            mmap_lines += channel_lines
+            pbar.set_postfix(idx=mmap_index, lines=mmap_lines)
 
 
-def _tokenize_channel(channel: Channel) -> Int[np.ndarray, "seq vocab"]:  # noqa: F722
-    result = []
+def _tokenize_channel(
+    channel: Channel, mmap: Float[np.memmap, "seq vocab"]  # noqa: F722
+):
+    index = 0
     for note_index in range(len(channel.notes)):
         note = channel.notes[note_index]
-        result.append(_create_token(kind=note.kind, note=note.note))
-        if note_index == len(channel.notes) - 1:
-            continue
-        pause_time = channel.notes[note_index + 1].time_secs - note.time_secs
-        if pause_time > 0:
-            result.append(_create_token(kind="pause", time=pause_time))
-    result.append(_create_token(kind="end"))
-    return np.stack(result)
+        _create_token(mmap[index], kind=note.kind, note=note.note)
+        index += 1
+        if note_index < len(channel.notes) - 1:
+            _create_token(
+                mmap[index],
+                kind="pause",
+                time=channel.notes[note_index + 1].time_secs - note.time_secs,
+            )
+            index += 1
+        else:
+            _create_token(mmap[index], kind="end")
+            index += 1
+    assert index == mmap.shape[0]
 
 
 def _create_token(
+    mmap: Float[np.memmap, "vocab"],
     kind: Literal["on", "off", "pause", "end"],
+    *,
     note: Optional[int] = None,
     time: Optional[float] = None,
 ) -> Float[np.ndarray, "vocab"]:
-    kind_array = np.array(
-        [kind == "on", kind == "off", kind == "pause", kind == "end"],
-        dtype=np.float16,
-    )
+    index = 0
 
-    note_array = np.zeros((12,), dtype=np.float16)
-    octave_array = np.zeros((11,), dtype=np.float16)
+    if kind == "on":
+        mmap[0] = 1
+    elif kind == "off":
+        mmap[1] = 1
+    elif kind == "pause":
+        mmap[2] = 1
+    elif kind == "end":
+        mmap[3] = 1
+    index += 4
+
     if note is not None:
         assert 0 <= note < 128, note
-        note_array[note % 12] = 1
-        octave_array[note // 12] = 1
+        mmap[index + note % 12] = 1
+    index += 12
+    if note is not None:
+        mmap[index + note // 12] = 1
+    index += 11
 
-    time_array = np.zeros((1,), dtype=np.float16)
     if time is not None:
-        time_array[0] = np.log(time)
+        mmap[index] = time
+    index += 1
 
-    return np.concatenate([kind_array, note_array, octave_array, time_array])
+    assert index == mmap.shape[0], (index, mmap.shape[0])
 
 
 if __name__ == "__main__":

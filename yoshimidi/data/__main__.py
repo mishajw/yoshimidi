@@ -44,10 +44,10 @@ def _parse_data_multiprocessing(
     output_file: pathlib.Path,
 ):
     counters: DefaultDict[str, int] = DefaultDict(int)
-    midi_files = list(input_dir.rglob("*.mid"))[19200:]
+    midi_files = list(input_dir.rglob("*.mid"))
     with multiprocessing.Pool(processes=4) as pool, output_file.open("wb") as f:
         results = pool.imap_unordered(midi_parser.parse, midi_files)
-        pbar = tqdm.tqdm(results, total=len(midi_files))
+        pbar = tqdm.tqdm(results, desc="Parsing files", total=len(midi_files))
         for result in pbar:
             f.write(msgspec.json.encode(result.tracks) + b"\n")
             for counter_name, counter_value in result.counters.items():
@@ -55,6 +55,7 @@ def _parse_data_multiprocessing(
             pbar.set_postfix(
                 file=counters["successful_files"],
                 track=counters["successful_tracks"],
+                chans=counters["successful_channels"],
                 note=counters["successful_notes"],
             )
     logger.info("Counters:")
