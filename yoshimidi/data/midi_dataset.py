@@ -15,7 +15,7 @@ from yoshimidi.data.tokenize.__main__ import VOCAB
 class MidiDataset(Dataset):
     context_window: int
     end_indices: List[List[int]]
-    memmap: List[np.memmap]
+    memmap: List[np.ndarray]
     memmap_cum_tokens: List[int]
 
     @classmethod
@@ -48,7 +48,6 @@ class MidiDataset(Dataset):
         return num_token // self.context_window
 
     def __getitem__(self, index: int) -> Tensor:
-        result = torch.zeros((self.context_window, VOCAB))
         token_start = index * self.context_window
         token_end = (index + 1) * self.context_window
         first_bigger_tokens_idx = next(
@@ -64,4 +63,4 @@ class MidiDataset(Dataset):
         # TODO: Instead of padding, combine with next memmap.
         result = np.pad(result, [(0, self.context_window - result.shape[0]), (0, 0)])
         assert result.shape == (self.context_window, VOCAB), result.shape
-        return result
+        return torch.from_numpy(result)

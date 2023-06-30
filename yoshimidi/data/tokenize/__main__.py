@@ -20,13 +20,13 @@ VOCAB = 28  # 4 + 12 + 11 + 1
 class _TokenizeState:
     index: int
     written_lines: int
-    mmap: Optional[Float[np.memmap, "seq vocab"]]  # noqa: F722
+    memmap: Optional[Float[np.memmap, "seq vocab"]]  # noqa: F722
     end_indices: List[int]
     output_dir: pathlib.Path
     lines_per_file: int
 
     def open_mmap(self) -> None:
-        self.mmap = np.memmap(
+        self.memmap = np.memmap(
             self.output_dir / f"tokens_{self.index:04d}.npy",
             dtype=np.float32,
             shape=(self.lines_per_file, VOCAB),
@@ -37,11 +37,12 @@ class _TokenizeState:
         with (self.output_dir / f"end_indicies_{self.index:04d}.npy").open("wb") as f:
             np.array(self.end_indices, dtype=np.int32).tofile(f)
 
-    def get_slice(self, num_lines: int) -> np.memmap:
+    def get_slice(self, num_lines: int) -> np.ndarray:
+        assert self.memmap is not None
         if self.written_lines + num_lines > self.lines_per_file:
             self.next_index()
             return self.get_slice(num_lines)
-        return self.mmap[self.written_lines : self.written_lines + num_lines]
+        return self.memmap[self.written_lines : self.written_lines + num_lines]
 
     def register_lines_written(self, num_lines: int) -> None:
         self.written_lines += num_lines
@@ -86,7 +87,7 @@ def _tokenize(
         output_dir=output_dir,
         index=0,
         written_lines=0,
-        mmap=None,
+        memmap=None,
         end_indices=[],
         lines_per_file=lines_per_file,
     )
@@ -102,7 +103,7 @@ def _tokenize(
 
 def _tokenize_channel(
     channel: Channel,
-    mmap: Float[np.memmap, "seq vocab"],  # noqa: F722
+    mmap: Float[np.ndarray, "seq vocab"],  # noqa: F722
 ):
     index = 0
     for note_index in range(len(channel.notes)):
@@ -128,7 +129,7 @@ def _create_token(
     *,
     note: Optional[int] = None,
     time: Optional[float] = None,
-) -> Float[np.ndarray, "vocab"]:
+) -> None:
     index = 0
 
     if kind == "on":
