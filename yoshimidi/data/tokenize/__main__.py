@@ -1,6 +1,6 @@
 import pathlib
 from dataclasses import dataclass
-from typing import List, Literal, Optional
+from typing import Iterable, List, Literal, Optional
 
 import fire
 import msgspec
@@ -14,7 +14,6 @@ from yoshimidi.data.track import Channel, Track
 seq, vocab = None, None
 
 VOCAB = 28  # 4 + 12 + 11 + 1
-_LINES_PER_FILE = 2**22
 
 
 @dataclass
@@ -24,12 +23,13 @@ class _TokenizeState:
     mmap: Optional[Float[np.memmap, "seq vocab"]]  # noqa: F722
     end_indices: List[int]
     output_dir: pathlib.Path
+    lines_per_file: int
 
     def open_mmap(self) -> None:
         self.mmap = np.memmap(
             self.output_dir / f"tokens_{self.index:04d}.npy",
             dtype=np.float32,
-            shape=(_LINES_PER_FILE, VOCAB),
+            shape=(self.lines_per_file, VOCAB),
             mode="w+",
         )
 
@@ -38,7 +38,7 @@ class _TokenizeState:
             np.array(self.end_indices, dtype=np.int32).tofile(f)
 
     def get_slice(self, num_lines: int) -> np.memmap:
-        if self.written_lines + num_lines > _LINES_PER_FILE:
+        if self.written_lines + num_lines > self.lines_per_file:
             self.next_index()
             return self.get_slice(num_lines)
         return self.mmap[self.written_lines : self.written_lines + num_lines]
@@ -48,9 +48,9 @@ class _TokenizeState:
         self.end_indices.append(self.written_lines)
 
     def next_index(self) -> None:
+        self.write_end_indicies()
         self.index += 1
         self.written_lines = 0
-        self.write_end_indicies()
         self.end_indices = []
         self.open_mmap()
 
@@ -58,37 +58,51 @@ class _TokenizeState:
 def main(
     input_file: str,
     output_dir: str,
+    lines_per_file: int = 2**22,
 ):
     input_file: pathlib.Path = pathlib.Path(input_file).expanduser()
     output_dir: pathlib.Path = pathlib.Path(output_dir).expanduser()
     assert input_file.exists(), f"input_file does not exist: {input_file}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    with input_file.open("r") as f:
+        _tokenize(
+            channels=(
+                channel
+                for line in f
+                for track in msgspec.json.decode(line, type=List[Track])
+                for channel in track.channels.values()
+                if len(channel.notes) > 0
+            ),
+            output_dir=output_dir,
+            lines_per_file=lines_per_file,
+        )
+
+
+def _tokenize(
+    channels: Iterable[Channel], output_dir: pathlib.Path, lines_per_file: int
+):
     state = _TokenizeState(
-        output_dir=output_dir, index=0, written_lines=0, mmap=None, end_indices=[]
+        output_dir=output_dir,
+        index=0,
+        written_lines=0,
+        mmap=None,
+        end_indices=[],
+        lines_per_file=lines_per_file,
     )
     state.open_mmap()
-
-    with input_file.open("r") as f:
-        channel_iter = (
-            channel
-            for line in f
-            for track in msgspec.json.decode(line, type=List[Track])
-            for channel in track.channels.values()
-            if len(channel.notes) > 0
-        )
-        pbar = tqdm.tqdm(channel_iter, desc="Tokenizing channels")
-        for channel in pbar:
-            channel_lines = len(channel.notes) * 2
-            _tokenize_channel(channel, state.get_slice(channel_lines))
-            state.register_lines_written(channel_lines)
-            pbar.set_postfix(idx=state.index, lines=state.written_lines)
-
+    pbar = tqdm.tqdm(channels, desc="Tokenizing channels")
+    for channel in pbar:
+        channel_lines = len(channel.notes) * 2
+        _tokenize_channel(channel, state.get_slice(channel_lines))
+        state.register_lines_written(channel_lines)
+        pbar.set_postfix(idx=state.index, lines=state.written_lines)
     state.write_end_indicies()
 
 
 def _tokenize_channel(
-    channel: Channel, mmap: Float[np.memmap, "seq vocab"]  # noqa: F722
+    channel: Channel,
+    mmap: Float[np.memmap, "seq vocab"],  # noqa: F722
 ):
     index = 0
     for note_index in range(len(channel.notes)):
