@@ -26,7 +26,9 @@ class Transformer(torch.nn.Module):
         residual_stream = self.input_embeddings(tokens)
         for block in self.blocks:
             residual_stream = block(residual_stream)
-        return self.output_embeddings(residual_stream)
+        outputs = self.output_embeddings(residual_stream)
+        # TODO: MIDI softmax!
+        return torch.nn.functional.softmax(outputs, dim=2)
 
 
 class _TransformerBlock(torch.nn.Module):
