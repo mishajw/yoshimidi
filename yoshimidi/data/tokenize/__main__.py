@@ -1,4 +1,5 @@
 import pathlib
+from dataclasses import dataclass
 from typing import List, Literal, Optional
 
 import fire
@@ -12,7 +13,46 @@ from yoshimidi.data.track import Channel, Track
 # jaxtyping
 seq, vocab = None, None
 
-_VOCAB = 28  # 4 + 12 + 11 + 1
+VOCAB = 28  # 4 + 12 + 11 + 1
+_LINES_PER_FILE = 2**22
+
+
+@dataclass
+class _TokenizeState:
+    index: int
+    written_lines: int
+    mmap: Optional[Float[np.memmap, "seq vocab"]]  # noqa: F722
+    end_indices: List[int]
+    output_dir: pathlib.Path
+
+    def open_mmap(self) -> None:
+        self.mmap = np.memmap(
+            self.output_dir / f"tokens_{self.index:04d}.npy",
+            dtype=np.float32,
+            shape=(_LINES_PER_FILE, VOCAB),
+            mode="w+",
+        )
+
+    def write_end_indicies(self) -> None:
+        with (self.output_dir / f"end_indicies_{self.index:04d}.npy").open("wb") as f:
+            np.array(self.end_indices, dtype=np.int32).tofile(f)
+
+    def get_slice(self, num_lines: int) -> np.memmap:
+        if self.written_lines + num_lines > _LINES_PER_FILE:
+            self.next_index()
+            return self.get_slice(num_lines)
+        return self.mmap[self.written_lines : self.written_lines + num_lines]
+
+    def register_lines_written(self, num_lines: int) -> None:
+        self.written_lines += num_lines
+        self.end_indices.append(self.written_lines)
+
+    def next_index(self) -> None:
+        self.index += 1
+        self.written_lines = 0
+        self.write_end_indicies()
+        self.end_indices = []
+        self.open_mmap()
 
 
 def main(
@@ -24,9 +64,11 @@ def main(
     assert input_file.exists(), f"input_file does not exist: {input_file}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    lines_per_file = 2**22
-    mmap_index = -1
-    mmap_lines = lines_per_file
+    state = _TokenizeState(
+        output_dir=output_dir, index=0, written_lines=0, mmap=None, end_indices=[]
+    )
+    state.open_mmap()
+
     with input_file.open("r") as f:
         channel_iter = (
             channel
@@ -38,18 +80,11 @@ def main(
         pbar = tqdm.tqdm(channel_iter, desc="Tokenizing channels")
         for channel in pbar:
             channel_lines = len(channel.notes) * 2
-            if mmap_lines + channel_lines > lines_per_file:
-                mmap_index += 1
-                mmap_lines = 0
-                mmap = np.memmap(
-                    output_dir / f"tokens_{mmap_index:04d}.npy",
-                    dtype=np.float32,
-                    shape=(lines_per_file, _VOCAB),
-                    mode="w+",
-                )
-            _tokenize_channel(channel, mmap[mmap_lines : mmap_lines + channel_lines])
-            mmap_lines += channel_lines
-            pbar.set_postfix(idx=mmap_index, lines=mmap_lines)
+            _tokenize_channel(channel, state.get_slice(channel_lines))
+            state.register_lines_written(channel_lines)
+            pbar.set_postfix(idx=state.index, lines=state.written_lines)
+
+    state.write_end_indicies()
 
 
 def _tokenize_channel(

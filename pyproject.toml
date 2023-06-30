@@ -16,6 +16,7 @@ pygame = "^2.5.0"
 jaxtyping = "^0.2.20"
 seaborn = "^0.12.2"
 mido = "^1.2.10"
+torch = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.3"
