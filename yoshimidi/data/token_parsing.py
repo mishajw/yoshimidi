@@ -55,7 +55,7 @@ def get_kind(token: Float[np.ndarray, "vocab"]) -> Literal["on", "off", "pause",
 
 def get_note(token: Float[np.ndarray, "vocab"]) -> int:
     assert get_kind(token) in ["on", "off"]
-    return np.argmax(token[4:16]) + 12 * np.argmax(token[16:27])
+    return np.argmax(token[4:16]).item() + 12 * np.argmax(token[16:27]).item()
 
 
 def get_time_secs(token: Float[np.ndarray, "vocab"]) -> float:
