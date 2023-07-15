@@ -13,7 +13,7 @@ import tqdm
 from loguru import logger
 from mido import MidiFile
 
-from yoshimidi.data import track_parsing
+from yoshimidi.data.parse import track_parsing
 from yoshimidi.data.parse.tracks import Track
 
 _LAKH_MIDI_DATASET_URL = "http://hog.ee.columbia.edu/craffel/lmd/lmd_full.tar.gz"

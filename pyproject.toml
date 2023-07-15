@@ -24,11 +24,17 @@ pre-commit = "^3.3.3"
 mypy = "^1.4.0"
 types-requests = "^2.31.0.1"
 ipykernel = "^6.23.3"
+types-tqdm = "^4.65.0.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
-ignore_missing_imports = true
 allow_redefinition = true
+[[tool.mypy.overrides]]
+module = ["mido.*", "fire"]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"

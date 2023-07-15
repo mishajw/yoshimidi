@@ -2,10 +2,10 @@ import pathlib
 from tempfile import TemporaryDirectory
 
 import numpy as np
-from scripts.tokenize import _tokenize
 
-from yoshimidi.data.token_parsing import VOCAB
-from yoshimidi.data.tracks import Channel, Note
+from yoshimidi.clis.tokenize_midi_dataset import _tokenize
+from yoshimidi.data.parse.token_parsing import VOCAB
+from yoshimidi.data.parse.tracks import Channel, Note
 
 
 def test_single_file():

@@ -6,8 +6,8 @@ import numpy as np
 from loguru import logger
 from mido import Message, MidiTrack
 
-from yoshimidi.data import token_parsing
-from yoshimidi.data.tracks import Channel, Note, Track, TrackMetadata
+from yoshimidi.data.parse import token_parsing
+from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
 
 DEFAULT_TICKS_PER_BEAT = 120
 DEFAULT_TEMPO = 447761

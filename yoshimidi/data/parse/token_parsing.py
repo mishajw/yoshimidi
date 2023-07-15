@@ -3,7 +3,7 @@ from typing import Literal
 import numpy as np
 from jaxtyping import Float
 
-from yoshimidi.data.tracks import Channel
+from yoshimidi.data.parse.tracks import Channel
 
 VOCAB = 28  # 4 + 12 + 11 + 1
 DTYPE = np.float32

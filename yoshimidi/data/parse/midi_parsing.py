@@ -1,8 +1,8 @@
 import mido
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
-from yoshimidi.data.track_parsing import DEFAULT_TEMPO, DEFAULT_TICKS_PER_BEAT
-from yoshimidi.data.tracks import Track
+from yoshimidi.data.parse.track_parsing import DEFAULT_TEMPO, DEFAULT_TICKS_PER_BEAT
+from yoshimidi.data.parse.tracks import Track
 
 
 def from_tracks(tracks: list[Track]) -> MidiFile:
