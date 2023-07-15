@@ -4,10 +4,10 @@ import dotenv
 import fire
 import torch
 import tqdm
+import wandb
 from loguru import logger
 from torch.utils.data import DataLoader
 
-import wandb
 from yoshimidi.data.midi_dataset import MidiDataset
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.transformer import Transformer, TransformerConfig
