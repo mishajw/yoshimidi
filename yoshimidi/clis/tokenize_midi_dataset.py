@@ -10,8 +10,8 @@ import numpy as np
 import tqdm
 from jaxtyping import Float
 
-from yoshimidi.data import token_parsing
-from yoshimidi.data.tracks import Channel, Track
+from yoshimidi.data.parse import token_parsing
+from yoshimidi.data.parse.tracks import Channel, Track
 
 
 @dataclass

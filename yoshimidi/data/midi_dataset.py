@@ -7,8 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-# TODO: Move to better location?
-from scripts.tokenize import VOCAB
+from yoshimidi.data.parse.token_parsing import VOCAB
 
 
 @dataclass
