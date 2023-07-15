@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import multiprocessing
 import pathlib
 import shutil
@@ -74,7 +76,9 @@ def _parse_midi_path(path: pathlib.Path) -> "_ParseResult":
         counters["bad_file"] += 1
         return _ParseResult(tracks=[], counters=counters)
     tracks_with_failures: list[Track | None] = [
-        track_parsing.from_midi(midi_track, ticks_per_beat=midi_file.ticks_per_beat)
+        track_parsing.from_midi(
+            midi_track, ticks_per_beat=midi_file.ticks_per_beat, log_warnings=False
+        )
         for midi_track in midi_file.tracks
     ]
     tracks: list[Track] = [track for track in tracks_with_failures if track is not None]

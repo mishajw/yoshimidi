@@ -9,13 +9,16 @@ from mido import Message, MidiTrack
 from yoshimidi.data import token_parsing
 from yoshimidi.data.tracks import Channel, Note, Track, TrackMetadata
 
-# DEFAULT_TICKS_PER_BEAT = 480
-# DEFAULT_TEMPO = 500000
 DEFAULT_TICKS_PER_BEAT = 120
 DEFAULT_TEMPO = 447761
 
 
-def from_midi(midi_track: MidiTrack, *, ticks_per_beat: float) -> Optional[Track]:
+def from_midi(
+    midi_track: MidiTrack,
+    *,
+    ticks_per_beat: float,
+    log_warnings: bool = True,
+) -> Optional[Track]:
     track = Track(
         channels=defaultdict(lambda: Channel(notes=[], program_nums=[])),
         metadata=TrackMetadata(),
@@ -23,16 +26,18 @@ def from_midi(midi_track: MidiTrack, *, ticks_per_beat: float) -> Optional[Track
 
     tempos = {message.tempo for message in midi_track if message.type == "set_tempo"}
     if len(tempos) > 1:
-        logger.warning(f"Multiple tempos found: {tempos}")
+        if log_warnings:
+            logger.warning(f"Multiple tempos found: {tempos}")
         return None
     tempo = list(tempos)[0] if tempos else 500000
-    print(tempo, ticks_per_beat)
 
     message: Message
     for message in midi_track:
         if message.is_meta or message.type == "sysex":
             continue
         if message.type == "stop":
+            if log_warnings:
+                logger.warning(f"Found stop message: {message}")
             return None
         if message.channel == 9:
             # Skip drum channel.

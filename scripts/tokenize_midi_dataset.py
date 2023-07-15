@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pathlib
 from dataclasses import dataclass
 from typing import Iterable
