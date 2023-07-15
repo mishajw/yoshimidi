@@ -2,8 +2,8 @@ import pathlib
 from tempfile import TemporaryDirectory
 
 import numpy as np
-
 from scripts.tokenize import _tokenize
+
 from yoshimidi.data.token_parsing import VOCAB
 from yoshimidi.data.tracks import Channel, Note
 
