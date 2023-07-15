@@ -18,6 +18,8 @@ seaborn = "^0.12.2"
 mido = {extras = ["ports"], version = "^1.2.10"}
 torch = "^2.0.1"
 pytest = "^7.4.0"
+wandb = "^0.15.5"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.3"
