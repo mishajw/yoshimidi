@@ -11,7 +11,7 @@ from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.transformer import Transformer, TransformerConfig
 
 
-def main(dataset_path: str = "~/Downloads/yoshimidi/tokenized"):
+def main(dataset_path: str):
     dataset_path: pathlib.Path = pathlib.Path(dataset_path).expanduser()
 
     logger.info("Initializing model...")
