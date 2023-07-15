@@ -15,7 +15,7 @@ loguru = "^0.7.0"
 pygame = "^2.5.0"
 jaxtyping = "^0.2.20"
 seaborn = "^0.12.2"
-mido = "^1.2.10"
+mido = {extras = ["ports"], version = "^1.2.10"}
 torch = "^2.0.1"
 pytest = "^7.4.0"
 

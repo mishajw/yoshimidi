@@ -959,6 +959,9 @@ files = [
     {file = "mido-1.2.10.tar.gz", hash = "sha256:17b38a8e4594497b850ec6e78b848eac3661706bfc49d484a36d91335a373499"},
 ]
 
+[package.dependencies]
+python-rtmidi = {version = ">=1.1.0", optional = true, markers = "extra == \"ports\""}
+
 [package.extras]
 dev = ["check-manifest (>=0.35)", "flake8 (>=3.4.1)", "pytest (>=3.2.2)", "sphinx (>=1.6.3)", "tox (>=2.8.2)"]
 ports = ["python-rtmidi (>=1.1.0)"]
@@ -1635,6 +1638,37 @@ files = [
 six = ">=1.5"
 
 [[package]]
+name = "python-rtmidi"
+version = "1.5.4"
+description = "A Python binding for the RtMidi C++ library implemented using Cython."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "python_rtmidi-1.5.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:b4d5e5883af24c7f8eaeae080828e996eed95f1b6d42def12148c4f45156b462"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:32a9c7a4e671954a8d8c6eef8166f340c73a76e3db14ac1cdb6c8b0984ccd90c"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:0e1ae45801512f3fc6183c72980b6cdee4f4755274323000c30be822789ff7d3"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:8fbb95f785ea0682e1a2e30fccf18e05e3a152b6527c68829b6e2eabd4e657f0"},
+    {file = "python_rtmidi-1.5.4-cp310-cp310-win_amd64.whl", hash = "sha256:201ede931bc3c1be76654c26660bb4232b19b7a39971c075912cafc421308843"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d844099e62b26cc7c1295b0e0ce13466a947aabe00628963238a07759eb6ca11"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2862391236f692a55451a476097b4a2bd05eabbc257a6e7b64e969a599ed7486"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:60b9a92ab049f5c5d44af8fc4e6502f044a608b1fe9a33889e4b94e3df4cf17c"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:56d369f29b70d7c838919b3c02bc819baa5a20a9149acaf2a3a248eb83e43c1c"},
+    {file = "python_rtmidi-1.5.4-cp311-cp311-win_amd64.whl", hash = "sha256:79373aa56729c566c377f639e1d7b145c1d27cd9d593da8fceb09219f8a00d77"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5a6d17cbe27f01cf33c52576f9e7ab9f250ae4e3f6df9f9252da83e623732973"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:c05622151bbd714bbb39a98101d656ac26bb6a0af769256f22ddd323862bdb54"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:3d0cf60664b909ef9b8a7186be336d36e134e3a02b166b0a3262a75e5d458f71"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:649ce2acaf59da0e8be730d6441fc06659a7a7f8b4c1d70c9362685f06573447"},
+    {file = "python_rtmidi-1.5.4-cp38-cp38-win_amd64.whl", hash = "sha256:7bd2a90456276bc785de5f4da047e52f25758dfa76e5933ac3e14099f2954ff5"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:aa917ad102323ffdfa5bf8e39af4baf4c7ea84452b920da35bbb45a24a311b0e"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:b2ca4034589bae698b0cca501a0caa4983009cf3250d200b22908b6a68d9e180"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:e5fcd4b132c3bf13f51296ff40f5325eb2d92c9badc4ee197b21ad3e9bf8acb4"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:49e1d3e801289b68855c632f10ae9d1f8a604b6064619a7bd2cadd58dbe7a8f1"},
+    {file = "python_rtmidi-1.5.4-cp39-cp39-win_amd64.whl", hash = "sha256:57985fc7470eff883d81fd563f5084725e9c92999320364363923b1eb6fd045e"},
+    {file = "python_rtmidi-1.5.4.tar.gz", hash = "sha256:b0b5064280db6b78a262fa9417031b224b5275905bd0e2e171c7d0fbe14544fd"},
+]
+
+[[package]]
 name = "pytz"
 version = "2023.3"
 description = "World timezone definitions, modern and historical"
@@ -2114,6 +2148,18 @@ files = [
 ]
 
 [[package]]
+name = "umidiparser"
+version = "1.2"
+description = "umidiparser - low footprint MIDI file parser for Micropython, CircuitPython and Python"
+category = "main"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "umidiparser-1.2-py3-none-any.whl", hash = "sha256:c643fff2b8beb32f0868d3cfe51b423086f2d54519574b2a74bc5c01c657deff"},
+    {file = "umidiparser-1.2.tar.gz", hash = "sha256:7c779396895e3b991110211521f7430a510964fa8fdc75f6e64cbad0da077e0f"},
+]
+
+[[package]]
 name = "urllib3"
 version = "2.0.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -2182,4 +2228,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "740951767742fcbf8da20ba221cacbbfb22cbb40c684c41b429105b40b31964e"
+content-hash = "5ed465637b985f9193d71855d5962c7d1f3e800c46df6a0d69662436d9fb96f9"

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.tokenize.__main__ import VOCAB
+from scripts.tokenize import VOCAB
 
 
 class Transformer(torch.nn.Module):
