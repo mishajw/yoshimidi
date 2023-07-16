@@ -13,6 +13,9 @@ precommit:
 mypy:
 	poetry run mypy ./yoshimidi ./tests
 
+.PHONY: du
+du:
+	du -sh out/* out/dataset/* out/checkpoints/*
 
 # Dataset prep
 # ============
