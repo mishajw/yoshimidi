@@ -13,7 +13,9 @@ def midi_activation(
     for piece, piece_length in PIECE_LENGTHS.items():
         if piece in ["kind", "note_key", "note_octave"]:
             results.append(
-                torch.nn.functional.softmax(logits[:, :, index : index + piece_length])
+                torch.nn.functional.softmax(
+                    logits[:, :, index : index + piece_length], dim=2
+                )
             )
         elif piece == "time":
             assert piece_length == 1
