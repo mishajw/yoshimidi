@@ -19,7 +19,7 @@ make train
 A language model with no control tokens that produces coherent-ish sounding music.
 
 - [x] Data preparation (parsing, tokenization, etc).
-  - [ ] Complete data generation run.
+  - [x] Complete data generation run.
   - [ ] Shuffling dataset.
   - [ ] Fix memmap boundaries issue.
 - [x] Transformer implementation.
@@ -28,6 +28,7 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Inference loop.
 - [ ] Train/eval split.
 - [ ] Checkpointing.
+- [ ] Categorical loss for time, a la MuZero. [stretch]
 
 ### Milestone 2: Control tokens
 
