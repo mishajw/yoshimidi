@@ -30,4 +30,4 @@ tokenize:
 
 .PHONY: train
 train:
-	poetry run python yoshimidi/clis/train.py
+	poetry run python yoshimidi/clis/train.py configs/train.toml

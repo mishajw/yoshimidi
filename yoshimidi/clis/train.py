@@ -3,6 +3,7 @@ from datetime import datetime
 
 import dotenv
 import fire
+import toml
 import torch
 import tqdm
 import wandb
@@ -24,25 +25,17 @@ dotenv.load_dotenv()
 
 
 class Config(BaseModel, extra="forbid"):
-    tag: str = "2023-07-16_v1"
+    tag: str
     output: OutputConfig = OutputConfig()
-    transformer: TransformerConfig = TransformerConfig(
-        num_layers=3,
-        residual_stream_size=128,
-        num_attention_heads=4,
-    )
-    training: TrainingConfig = TrainingConfig(
-        context_window=1024,
-        batch_size=32,
-    )
-    checkpoint: CheckpointConfig = CheckpointConfig(
-        every_n_steps=100,
-    )
+    transformer: TransformerConfig
+    training: TrainingConfig
+    checkpoint: CheckpointConfig
     use_wandb: bool = True
 
 
-def main():
-    config = Config()
+def main(config_path: str):
+    with open(config_path) as f:
+        config = Config.model_validate(toml.load(f))
     logger.info("Starting training")
     logger.info("Config: {}", config.model_dump_json(indent=2))
     logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")

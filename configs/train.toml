@@ -1,0 +1,14 @@
+tag = "2023-07-16_v2"
+use_wandb = true
+
+[transformer]
+num_layers = 3
+residual_stream_size = 128
+num_attention_heads = 4
+
+[training]
+context_window = 1024
+batch_size = 32
+
+[checkpoint]
+every_n_steps = 100
