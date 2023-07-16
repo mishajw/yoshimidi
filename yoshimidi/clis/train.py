@@ -50,6 +50,7 @@ def main(dataset_path: str):
 
     bar = tqdm.tqdm(data_loader, desc="Training")
     for batch in bar:
+        optimizer.zero_grad()
         start_time = datetime.now()
         outputs = model(batch)
         loss_values = autoregressive_midi_loss(batch=batch, outputs=outputs)
