@@ -1,9 +1,8 @@
-from dataclasses import dataclass
-
 import torch
 from jaxtyping import Float
 
 from yoshimidi.data.parse.token_parsing import VOCAB
+from yoshimidi.train.transformer_config import TransformerConfig
 
 
 class Transformer(torch.nn.Module):
@@ -30,51 +29,53 @@ class Transformer(torch.nn.Module):
     - Transformer: https://arxiv.org/pdf/1706.03762.pdf
     """
 
-    def __init__(self, config: "TransformerConfig"):
+    def __init__(self, config: TransformerConfig):
         super().__init__()
-        self.input_embeddings = torch.nn.Linear(
-            in_features=VOCAB,
-            out_features=config.residual_stream_size,
+        self.config = config
+        self.token_embeddings = torch.nn.Parameter(
+            torch.randn((VOCAB, config.residual_stream_size)), requires_grad=True
         )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
-        self.output_embeddings = torch.nn.Linear(
-            in_features=config.residual_stream_size,
-            out_features=VOCAB,
-        )
 
     def forward(
         self,
         tokens: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq vocab"]:  # noqa: F722
-        residual_stream = self.input_embeddings(tokens)
+        residual_stream = tokens @ (
+            self.token_embeddings * self.config.residual_stream_size**0.5
+        )
+        # TODO: Add positional encodings.
+        # residual_stream += positional_encodings
         for block in self.blocks:
             residual_stream = block(residual_stream)
-        outputs = self.output_embeddings(residual_stream)
-        # TODO: MIDI softmax!
+        outputs = residual_stream @ self.token_embeddings.T
+        # TODO: Use softmax that works for MIDI.
         return torch.nn.functional.softmax(outputs, dim=2)
 
 
 class _TransformerBlock(torch.nn.Module):
-    def __init__(self, config: "TransformerConfig"):
+    def __init__(self, config: TransformerConfig):
         super().__init__()
         self.attention = _MultiHeadAttention(config)
         self.mlp = _Mlp(config)
-        self.layer_norm = torch.nn.LayerNorm(config.residual_stream_size)
+        self.layer_norm_attention = torch.nn.LayerNorm(config.residual_stream_size)
+        self.layer_norm_mlp = torch.nn.LayerNorm(config.residual_stream_size)
 
     def forward(
         self,
         residual_stream: Float[torch.Tensor, "batch seq resid"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq resid"]:  # noqa: F722
-        residual_stream = self.layer_norm(residual_stream)
-        return (
-            residual_stream
-            + self.attention(residual_stream)
-            + self.mlp(residual_stream)
+        residual_stream = self.layer_norm_attention(
+            residual_stream + self.attention(residual_stream),
         )
+        residual_stream = self.layer_norm_mlp(
+            residual_stream + self.mlp(residual_stream),
+        )
+        return residual_stream
 
 
 class _MultiHeadAttention(torch.nn.Module):
-    def __init__(self, config: "TransformerConfig"):
+    def __init__(self, config: TransformerConfig):
         super().__init__()
         self.attention_heads = [
             _AttentionHead(config) for _ in range(config.num_attention_heads)
@@ -99,7 +100,7 @@ class _MultiHeadAttention(torch.nn.Module):
 
 
 class _AttentionHead(torch.nn.Module):
-    def __init__(self, config: "TransformerConfig"):
+    def __init__(self, config: TransformerConfig):
         super().__init__()
         self.attention_head_size = config.attention_head_size
         self.qkv_layer = torch.nn.Linear(
@@ -111,25 +112,31 @@ class _AttentionHead(torch.nn.Module):
         self,
         head_stream: Float[torch.Tensor, "batch seq head"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq head"]:  # noqa: F722
+        _, seq_len, _ = head_stream.shape
         qkv = self.qkv_layer(head_stream)
         queries = qkv[:, :, 0 : self.attention_head_size]
-        keys = qkv[:, :, self.attention_head_size : self.attention_head_size * 2]
+        keys = qkv[:, :, self.attention_head_size : self.attention_head_size * 2]  # ()
         values = qkv[:, :, self.attention_head_size * 2 :]
+        attention_logits = queries @ keys.transpose(2, 1)
+        attention_mask = torch.triu(
+            torch.full((seq_len, seq_len), fill_value=-1e6), diagonal=1
+        )
         attention = torch.nn.functional.softmax(
-            (queries @ keys.transpose(2, 1)) / (self.attention_head_size**0.5), dim=2
+            (attention_logits * attention_mask) / (self.attention_head_size**0.5),
+            dim=2,
         )
         return attention @ values
 
 
 class _Mlp(torch.nn.Module):
-    def __init__(self, config: "TransformerConfig"):
+    def __init__(self, config: TransformerConfig):
         super().__init__()
         self.linear_1 = torch.nn.Linear(
             in_features=config.residual_stream_size,
-            out_features=config.residual_stream_size * 4,
+            out_features=config.feed_forward_size,
         )
         self.linear_2 = torch.nn.Linear(
-            in_features=config.residual_stream_size * 4,
+            in_features=config.feed_forward_size,
             out_features=config.residual_stream_size,
         )
 
@@ -138,14 +145,6 @@ class _Mlp(torch.nn.Module):
         residual_stream: Float[torch.Tensor, "batch seq resid"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq resid"]:  # noqa: F722
         residual_stream = self.linear_1(residual_stream)
-        residual_stream = torch.nn.functional.gelu(residual_stream)
+        residual_stream = torch.nn.functional.relu(residual_stream)
         residual_stream = self.linear_2(residual_stream)
         return residual_stream
-
-
-@dataclass
-class TransformerConfig:
-    residual_stream_size: int = 128
-    attention_head_size: int = 32
-    num_attention_heads: int = 128 // 32
-    num_layers: int = 3
