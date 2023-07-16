@@ -1,6 +1,9 @@
+import re
 from pathlib import Path
 
 from pydantic import BaseModel
+
+_CHECKPOINT_NAME_REGEX = re.compile(r"step_(\d+)\.pt")
 
 
 class OutputConfig(BaseModel, extra="forbid"):
@@ -24,5 +27,11 @@ class OutputConfig(BaseModel, extra="forbid"):
     def get_latest_checkpoint(self, tag: str) -> Path:
         batch_paths = list((self.checkpoints / tag).iterdir())
         assert len(batch_paths) > 0, (self, tag)
-        assert all(p.name.isdecimal() for p in batch_paths), batch_paths
-        return sorted(batch_paths, key=lambda p: int(p.name), reverse=True)[0]
+        assert all(
+            _CHECKPOINT_NAME_REGEX.fullmatch(p.name) is not None for p in batch_paths
+        ), batch_paths
+        return sorted(
+            batch_paths,
+            key=lambda p: int(_CHECKPOINT_NAME_REGEX.fullmatch(p.name).group(1)),
+            reverse=True,
+        )[0]

@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 from loguru import logger
 from pydantic import BaseModel
@@ -41,14 +43,16 @@ def save_checkpoint(
 
 def load_checkpoint(
     tag: str,
-    step: int,
+    step: int | Literal["latest"],
     model: Transformer,
     optimizer: torch.optim.Optimizer,
     output_config: OutputConfig,
 ):
-    checkpoint = torch.load(
-        output_config.get_checkpoint(tag=tag, step=step),
-    )
+    if step == "latest":
+        checkpoint_path = output_config.get_latest_checkpoint(tag=tag)
+    else:
+        checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
+    checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     return model, optimizer

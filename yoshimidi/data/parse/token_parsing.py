@@ -1,6 +1,7 @@
 from typing import Literal
 
 import numpy as np
+import torch
 from jaxtyping import Float
 
 from yoshimidi.data.parse.tracks import Channel
@@ -12,9 +13,11 @@ DTYPE = np.float32
 seq, vocab = None, None
 
 
-def from_channel(channel: Channel) -> np.ndarray:
+def from_channel(channel: Channel, include_end: bool = True) -> np.ndarray:
     buffer = np.zeros(get_buffer_size(channel), dtype=DTYPE)
     from_channel_to_buffer(channel, buffer)
+    if not include_end:
+        buffer = buffer[:-1]
     return buffer
 
 
@@ -34,6 +37,17 @@ def from_channel_to_buffer(
             _create_token(output[index], kind="end")
             index += 1
     assert index == output.shape[0]
+
+
+def create_torch_token(
+    kind: Literal["on", "off", "pause", "end"],
+    *,
+    note: int | None = None,
+    time: float | None = None,
+) -> torch.Tensor:
+    result = np.zeros(VOCAB)
+    _create_token(result, kind, note=note, time=time)
+    return torch.Tensor(result)
 
 
 def get_buffer_size(channel: Channel):
@@ -64,7 +78,7 @@ def get_time_secs(token: Float[np.ndarray, "vocab"]) -> float:
 
 
 def _create_token(
-    mmap: Float[np.memmap, "vocab"],
+    mmap: Float[np.ndarray, "vocab"],
     kind: Literal["on", "off", "pause", "end"],
     *,
     note: int | None = None,
