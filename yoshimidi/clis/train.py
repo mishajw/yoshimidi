@@ -39,14 +39,24 @@ def main(dataset_path: str):
 
     wandb.login()
     wandb.init(project="yoshimidi", name="2023-07-15_v1", dir=".wandb")
+
+    logger.debug("Loading model")
     model = Transformer(transformer_config)
+    optimizer = torch.optim.Adam(model.parameters())
+    logger.debug(
+        f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
+    )
+
+    logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
         dataset_path, context_window=training_config.context_window
     )
     data_loader = DataLoader(
         dataset, batch_size=training_config.batch_size, shuffle=True
     )
-    optimizer = torch.optim.Adam(model.parameters())
+    logger.debug(f"Num tokens: {len(dataset) * training_config.context_window:.2E}")
+    logger.debug(f"Num rows: {len(dataset):.2E}")
+    logger.debug(f"Num batches: {len(data_loader):.2E}")
 
     bar = tqdm.tqdm(data_loader, desc="Training")
     for batch in bar:

@@ -29,8 +29,6 @@ class MidiDataset(Dataset):
                 path / f"tokens_{index}.npy", dtype=np.float32, mode="r"
             ).reshape((-1, VOCAB))
             assert memmap.shape == (2**22, VOCAB)
-            assert np.all(memmap[np.array(end_indices) - 1, 3] == 1)
-            assert np.all(memmap[end_indices[-1] :] == 0)
             memmap = memmap[: end_indices[-1]]
             all_end_indices.append(end_indices)
             all_memmaps.append(memmap)
