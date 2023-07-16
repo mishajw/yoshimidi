@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class TransformerConfig:
     num_layers: int
     residual_stream_size: int  # d_model
-    num_attention_heads: int = 128 // 32  # h
+    num_attention_heads: int  # h
 
     @property
     def attention_head_size(self) -> int:

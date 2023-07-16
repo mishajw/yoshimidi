@@ -16,14 +16,16 @@ from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.training_config import TrainingConfig
 from yoshimidi.train.transformer import Transformer
-from yoshimidi.train.transformer_config import GPT_CONFIG
+from yoshimidi.train.transformer_config import TransformerConfig
 
 dotenv.load_dotenv()
 
 
 def main(dataset_path: str):
     dataset_path: pathlib.Path = pathlib.Path(dataset_path).expanduser()
-    transformer_config = GPT_CONFIG
+    transformer_config = TransformerConfig(
+        num_layers=3, residual_stream_size=128, num_attention_heads=4
+    )
     training_config = TrainingConfig()
     logger.info("Starting training")
     logger.info(

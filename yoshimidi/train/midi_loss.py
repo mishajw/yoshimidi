@@ -22,7 +22,6 @@ def autoregressive_midi_loss(
     outputs = outputs[:, :-1, :]
     index = 0
 
-    print(labels[0, 2, index : index + 4])
     kind_loss = torch.nn.functional.cross_entropy(
         labels[:, :, index : index + 4],
         outputs[:, :, index : index + 4],
