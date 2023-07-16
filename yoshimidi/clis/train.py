@@ -52,8 +52,8 @@ def main(dataset_path: str):
     for batch in bar:
         optimizer.zero_grad()
         start_time = datetime.now()
-        outputs = model(batch)
-        loss_values = autoregressive_midi_loss(batch=batch, outputs=outputs)
+        logits = model(batch)
+        loss_values = autoregressive_midi_loss(batch=batch, logits=logits)
         loss_values.loss.backward()
         optimizer.step()
         time_per_batch_secs = (datetime.now() - start_time).total_seconds()
