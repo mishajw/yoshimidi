@@ -68,9 +68,19 @@ def main(dataset_path: str):
             "loss/time": loss_values.time_loss.item(),
             "perf/time_per_batch_secs": time_per_batch_secs,
             "perf/flops": flops,
+            **{
+                f"norms/{name}": param.norm().item()
+                for name, param in model.named_parameters()
+            },
+            **{
+                f"grad_norms/{name}": param.grad.norm().item()
+                if param.grad is not None
+                else -1
+                for name, param in model.named_parameters()
+            },
         }
-        bar.set_postfix(metrics)
         wandb.log(metrics)
+        bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
 
 
 if __name__ == "__main__":
