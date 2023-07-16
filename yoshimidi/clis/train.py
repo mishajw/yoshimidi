@@ -23,6 +23,7 @@ dotenv.load_dotenv()
 
 @dataclasses.dataclass
 class Config:
+    tag: str
     dataset_path: Path = Path("out/dataset_tokenized")
     transformer: TransformerConfig = TransformerConfig(
         num_layers=3,
@@ -33,6 +34,7 @@ class Config:
         context_window=1024,
         batch_size=32,
     )
+    use_wandb: bool = True
 
 
 def main():
@@ -41,8 +43,9 @@ def main():
     logger.info("Config: " + json.dumps(dataclasses.asdict(config), indent=2))
     logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")
 
-    wandb.login()
-    wandb.init(project="yoshimidi", name="2023-07-15_v1", dir=".wandb")
+    if config.use_wandb:
+        wandb.login()
+        wandb.init(project="yoshimidi", name=config.tag, dir=".wandb")
 
     logger.debug("Loading model")
     model = Transformer(config.transformer)
@@ -93,8 +96,9 @@ def main():
                 for name, param in model.named_parameters()
             },
         }
-        wandb.log(metrics)
         bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
+        if config.use_wandb:
+            wandb.log(metrics)
 
 
 if __name__ == "__main__":
