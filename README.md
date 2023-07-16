@@ -23,7 +23,7 @@ A language model with no control tokens that produces coherent-ish sounding musi
   - [ ] Shuffling dataset.
   - [ ] Fix memmap boundaries issue.
 - [x] Transformer implementation.
-  - [ ] Positional encodings.
+  - [x] Positional encodings.
 - [x] Basic training loop.
 - [ ] Inference loop.
 - [ ] Train/eval split.

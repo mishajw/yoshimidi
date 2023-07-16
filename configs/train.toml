@@ -1,4 +1,4 @@
-tag = "2023-07-16_v2"
+tag = "2023-07-16_v3_posenc"
 use_wandb = true
 
 [transformer]

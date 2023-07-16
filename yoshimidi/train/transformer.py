@@ -39,6 +39,7 @@ class Transformer(torch.nn.Module):
             torch.randn((VOCAB, config.residual_stream_size)), requires_grad=True
         )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
+        self.positional_encoding = _PositionalEncoding(config.residual_stream_size)
         for i, block in enumerate(self.blocks):
             self.add_module(f"block_{i}", block)
 
@@ -49,8 +50,7 @@ class Transformer(torch.nn.Module):
         residual_stream = tokens @ (
             self.token_embeddings * self.config.residual_stream_size**0.5
         )
-        # TODO: Add positional encodings.
-        # residual_stream += positional_encodings
+        residual_stream = self.positional_encoding(residual_stream)
         for block in self.blocks:
             residual_stream = block(residual_stream)
         return residual_stream @ self.token_embeddings.T
@@ -153,3 +153,29 @@ class _Mlp(torch.nn.Module):
         residual_stream = torch.nn.functional.relu(residual_stream)
         residual_stream = self.linear_2(residual_stream)
         return residual_stream
+
+
+class _PositionalEncoding(torch.nn.Module):
+    def __init__(self, residual_stream_size: int):
+        super().__init__()
+        self.encodings: torch.Tensor | None = None
+        self.residual_stream_size = residual_stream_size
+
+    def forward(self, x: torch.Tensor, seq_dim: int = -2) -> torch.Tensor:
+        if self.encodings is None or self.encodings.shape[0] != x.shape[seq_dim]:
+            self.encodings = self._generate_encodings(x, seq_dim)
+        return x + self.encodings
+
+    def _generate_encodings(self, x: torch.Tensor, seq_dim: int) -> torch.Tensor:
+        result = torch.tensor(
+            [
+                [
+                    pos / 10000 ** (2 * i / x.shape[seq_dim])
+                    for i in range(self.residual_stream_size)
+                ]
+                for pos in range(x.shape[seq_dim])
+            ]
+        )
+        result[:, 0::2] = torch.sin(result[:, 0::2])
+        result[:, 1::2] = torch.cos(result[:, 1::2])
+        return result
