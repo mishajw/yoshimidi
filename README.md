@@ -28,10 +28,14 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Inference loop.
 - [ ] Train/eval split.
 - [x] Checkpointing.
-- [ ] Categorical loss for time, a la MuZero. [stretch]
 
 ### Milestone 2: Control tokens
 
 ### Milestone 3: Interactive web app
 
 ### Milestone 4: Polish
+
+### Backlog
+- [ ] Categorical loss for time, a la MuZero.
+- [ ] Implement GPT-2/3/J architectures.
+- [ ] Implement better initialization schemes.
