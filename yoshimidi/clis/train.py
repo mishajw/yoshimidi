@@ -37,23 +37,18 @@ def main(dataset_path: str):
     )
     logger.info(f"Num parameters: {calculate_num_parameters(transformer_config):.2E}")
 
-    logger.info("Initializing WandB...")
     wandb.login()
     wandb.init(project="yoshimidi", name="2023-07-15_v1", dir=".wandb")
-    logger.info("Initializing model...")
     model = Transformer(transformer_config)
-    logger.info("Initializing dataset...")
     dataset = MidiDataset.from_path(
         dataset_path, context_window=training_config.context_window
     )
     data_loader = DataLoader(
         dataset, batch_size=training_config.batch_size, shuffle=True
     )
-    logger.info("Initializing optimizer...")
     optimizer = torch.optim.Adam(model.parameters())
 
-    logger.info("Starting training...")
-    bar = tqdm.tqdm(data_loader)
+    bar = tqdm.tqdm(data_loader, desc="Training")
     for batch in bar:
         start_time = datetime.now()
         outputs = model(batch)
