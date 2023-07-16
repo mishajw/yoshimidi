@@ -37,6 +37,8 @@ class Transformer(torch.nn.Module):
             torch.randn((VOCAB, config.residual_stream_size)), requires_grad=True
         )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
+        for i, block in enumerate(self.blocks):
+            self.add_module(f"block_{i}", block)
 
     def forward(
         self,
@@ -80,6 +82,8 @@ class _MultiHeadAttention(torch.nn.Module):
         self.attention_heads = [
             _AttentionHead(config) for _ in range(config.num_attention_heads)
         ]
+        for i, attention_head in enumerate(self.attention_heads):
+            self.add_module(f"attention_head_{i}", attention_head)
         self.output_layer = torch.nn.Linear(
             in_features=config.residual_stream_size,
             out_features=config.residual_stream_size,
