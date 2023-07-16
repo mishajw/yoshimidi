@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import dotenv
@@ -50,6 +51,8 @@ def main():
     ), f"Checkpoints already exist for tag: {config.tag}"
 
     if config.use_wandb:
+        logger.info("Setting up WandB")
+        os.environ["WANDB_SILENT"] = "true"
         wandb.login()
         wandb.init(project="yoshimidi", name=config.tag, dir=".wandb")
 
