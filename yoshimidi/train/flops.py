@@ -28,7 +28,8 @@ def calculate_num_flop(
     Approximates the number of floating point operations performed to process a single
     token in a forward pass.
 
-    Derived from OpenAI's scaling laws paper: https://arxiv.org/pdf/2001.08361.pdf
+    Derived from OpenAI's scaling laws paper:
+    https://arxiv.org/pdf/2001.08361.pdf#page=7
     """
     return (
         2 * calculate_num_parameters(transformer_config)
@@ -43,7 +44,8 @@ def calculate_num_parameters(config: TransformerConfig) -> int:
     """
     Approximates the number of parameters in the model.
 
-    Derived from OpenAI's scaling laws paper: https://arxiv.org/pdf/2001.08361.pdf
+    Derived from OpenAI's scaling laws paper:
+    https://arxiv.org/pdf/2001.08361.pdf#page=7
     """
     return (
         2
