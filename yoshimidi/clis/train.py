@@ -1,7 +1,7 @@
 import dataclasses
 import json
-import pathlib
 from datetime import datetime
+from pathlib import Path
 
 import dotenv
 import fire
@@ -21,27 +21,31 @@ from yoshimidi.train.transformer_config import TransformerConfig
 dotenv.load_dotenv()
 
 
-def main(dataset_path: str):
-    dataset_path: pathlib.Path = pathlib.Path(dataset_path).expanduser()
-    transformer_config = TransformerConfig(
-        num_layers=3, residual_stream_size=128, num_attention_heads=4
+@dataclasses.dataclass
+class Config:
+    dataset_path: Path = Path("out/dataset_tokenized")
+    transformer: TransformerConfig = TransformerConfig(
+        num_layers=3,
+        residual_stream_size=128,
+        num_attention_heads=4,
     )
-    training_config = TrainingConfig()
+    training: TrainingConfig = TrainingConfig(
+        context_window=1024,
+        batch_size=32,
+    )
+
+
+def main():
+    config = Config()
     logger.info("Starting training")
-    logger.info(
-        "Training config: " + json.dumps(dataclasses.asdict(training_config), indent=2)
-    )
-    logger.info(
-        "Transformer config: "
-        + json.dumps(dataclasses.asdict(transformer_config), indent=2)
-    )
-    logger.info(f"Num parameters: {calculate_num_parameters(transformer_config):.2E}")
+    logger.info("Config: " + json.dumps(dataclasses.asdict(config), indent=2))
+    logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")
 
     wandb.login()
     wandb.init(project="yoshimidi", name="2023-07-15_v1", dir=".wandb")
 
     logger.debug("Loading model")
-    model = Transformer(transformer_config)
+    model = Transformer(config.transformer)
     optimizer = torch.optim.Adam(model.parameters())
     logger.debug(
         f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
@@ -49,12 +53,12 @@ def main(dataset_path: str):
 
     logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
-        dataset_path, context_window=training_config.context_window
+        config.dataset_path, context_window=config.training.context_window
     )
     data_loader = DataLoader(
-        dataset, batch_size=training_config.batch_size, shuffle=True
+        dataset, batch_size=config.training.batch_size, shuffle=True
     )
-    logger.debug(f"Num tokens: {len(dataset) * training_config.context_window:.2E}")
+    logger.debug(f"Num tokens: {len(dataset) * config.training.context_window:.2E}")
     logger.debug(f"Num rows: {len(dataset):.2E}")
     logger.debug(f"Num batches: {len(data_loader):.2E}")
 
@@ -68,7 +72,7 @@ def main(dataset_path: str):
         optimizer.step()
         time_per_batch_secs = (datetime.now() - start_time).total_seconds()
         flops = calculate_flops(
-            transformer_config, training_config, time_per_batch_secs
+            config.transformer, config.training, time_per_batch_secs
         )
         metrics = {
             "loss/loss": loss_values.loss.item(),
