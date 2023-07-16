@@ -20,6 +20,9 @@ class Transformer(torch.nn.Module):
       number of residual layers.
     - GPT uses the original Transformer architecture.
 
+    TODO: Implement GPT-2/3/J architectures, currently only base GPT/Transformers are
+    implemented.
+
     # ruff: noqa: E501
     Architecture links:
     - GPT-J: https://en.wikipedia.org/wiki/GPT-J#Architecture
