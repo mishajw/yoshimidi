@@ -1,7 +1,4 @@
-import dataclasses
-import json
 from datetime import datetime
-from pathlib import Path
 
 import dotenv
 import fire
@@ -9,9 +6,11 @@ import torch
 import tqdm
 import wandb
 from loguru import logger
+from pydantic import BaseModel
 from torch.utils.data import DataLoader
 
 from yoshimidi.data.midi_dataset import MidiDataset
+from yoshimidi.output_config import OutputConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.training_config import TrainingConfig
@@ -21,10 +20,9 @@ from yoshimidi.train.transformer_config import TransformerConfig
 dotenv.load_dotenv()
 
 
-@dataclasses.dataclass
-class Config:
-    tag: str
-    dataset_path: Path = Path("out/dataset_tokenized")
+class Config(BaseModel, extra="forbid"):
+    tag: str = "2023-07-16_v1"
+    output: OutputConfig = OutputConfig()
     transformer: TransformerConfig = TransformerConfig(
         num_layers=3,
         residual_stream_size=128,
@@ -40,7 +38,7 @@ class Config:
 def main():
     config = Config()
     logger.info("Starting training")
-    logger.info("Config: " + json.dumps(dataclasses.asdict(config), indent=2))
+    logger.info("Config: {}", config.model_dump_json(indent=2))
     logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")
 
     if config.use_wandb:
@@ -56,7 +54,7 @@ def main():
 
     logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
-        config.dataset_path, context_window=config.training.context_window
+        config.output.dataset_tokenized, context_window=config.training.context_window
     )
     data_loader = DataLoader(
         dataset, batch_size=config.training.batch_size, shuffle=True

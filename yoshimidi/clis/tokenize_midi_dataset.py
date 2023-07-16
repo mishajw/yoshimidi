@@ -13,6 +13,7 @@ from jaxtyping import Float
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Track
 from yoshimidi.data.token_format import VOCAB
+from yoshimidi.output_config import OutputConfig
 
 
 @dataclass
@@ -56,16 +57,15 @@ class _TokenizeState:
 
 
 def main(
-    input_file: str,
-    output_dir: str,
     lines_per_file: int = 2**22,
 ):
-    input_file: pathlib.Path = pathlib.Path(input_file).expanduser()
-    output_dir: pathlib.Path = pathlib.Path(output_dir).expanduser()
-    assert input_file.exists(), f"input_file does not exist: {input_file}"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    config = OutputConfig()
+    assert (
+        config.dataset_parsed.exists()
+    ), f"input_file does not exist: {config.dataset_parsed}"
+    config.dataset_tokenized.mkdir(parents=True, exist_ok=True)
 
-    with input_file.open("r") as f:
+    with config.dataset_parsed.open("r") as f:
         _tokenize(
             channels=(
                 channel
@@ -74,7 +74,7 @@ def main(
                 for channel in track.channels.values()
                 if len(channel.notes) > 0
             ),
-            output_dir=output_dir,
+            output_dir=config.dataset_tokenized,
             lines_per_file=lines_per_file,
         )
 

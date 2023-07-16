@@ -19,19 +19,12 @@ mypy:
 
 .PHONY: parse
 parse:
-	poetry run \
-		python yoshimidi/clis/parse_midi_files.py \
-		out/dataset
+	poetry run python yoshimidi/clis/parse_midi_files.py
 
 .PHONY: tokenize
 tokenize:
-	poetry run \
-		python yoshimidi/clis/tokenize_midi_dataset.py \
-		out/dataset/dataset_parsed.jsonl \
-		out/dataset_tokenized
+	poetry run python yoshimidi/clis/tokenize_midi_dataset.py
 
 .PHONY: train
 train:
-	poetry run \
-		python yoshimidi/clis/train.py \
-		out/dataset_tokenized
+	poetry run python yoshimidi/clis/train.py

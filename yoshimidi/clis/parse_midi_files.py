@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import dataclasses
 import multiprocessing
 import pathlib
 import shutil
@@ -15,33 +16,31 @@ from mido import MidiFile
 
 from yoshimidi.data.parse import track_parsing
 from yoshimidi.data.parse.tracks import Track
+from yoshimidi.output_config import OutputConfig
 
 _LAKH_MIDI_DATASET_URL = "http://hog.ee.columbia.edu/craffel/lmd/lmd_full.tar.gz"
 
 
-def main(output_path: str):
-    output_path: pathlib.Path = pathlib.Path(output_path).expanduser()
+def main():
+    config = OutputConfig()
 
     logger.info("Starting")
-    logger.info("output_path: {}", output_path)
-    output_path.mkdir(parents=True, exist_ok=True)
+    logger.info("output_config: {}", dataclasses.asdict(config))
+    config.dataset_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Stage 1: Downloading data")
-    download_path = output_path / "dataset_raw.tar.gz"
-    if not download_path.exists():
+    if not config.dataset_raw_compressed.exists():
         with requests.get(_LAKH_MIDI_DATASET_URL, stream=True) as r:
-            with open(download_path, "wb") as f:
+            with open(config.dataset_raw_compressed, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
 
     logger.info("Stage 2: Extracting data")
-    extract_path = output_path / "dataset_raw"
-    if not extract_path.exists():
-        shutil.unpack_archive(download_path, extract_path)
+    if not config.dataset_raw.exists():
+        shutil.unpack_archive(config.dataset_raw_compressed, config.dataset_raw)
 
     logger.info("Stage 3: Parsing data")
-    parse_path = output_path / "dataset_parsed.jsonl"
-    if not parse_path.exists():
-        _parse_data_multiprocessing(extract_path, parse_path)
+    if not config.dataset_parsed.exists():
+        _parse_data_multiprocessing(config.dataset_raw, config.dataset_parsed)
 
 
 def _parse_data_multiprocessing(

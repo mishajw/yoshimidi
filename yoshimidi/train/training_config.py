@@ -1,7 +1,6 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class TrainingConfig:
+class TrainingConfig(BaseModel, extra="forbid"):
     context_window: int
     batch_size: int

@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class TransformerConfig:
+class TransformerConfig(BaseModel, extra="forbid"):
     num_layers: int
     residual_stream_size: int  # d_model
     num_attention_heads: int  # h
