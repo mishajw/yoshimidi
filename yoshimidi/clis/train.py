@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 
 from yoshimidi.data.midi_dataset import MidiDataset
 from yoshimidi.output_config import OutputConfig
+from yoshimidi.train import checkpoints
+from yoshimidi.train.checkpoints import CheckpointConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.training_config import TrainingConfig
@@ -32,7 +34,10 @@ class Config(BaseModel, extra="forbid"):
         context_window=1024,
         batch_size=32,
     )
-    use_wandb: bool = True
+    checkpoint: CheckpointConfig = CheckpointConfig(
+        every_n_steps=100,
+    )
+    use_wandb: bool = False
 
 
 def main():
@@ -64,7 +69,7 @@ def main():
     logger.debug(f"Num batches: {len(data_loader):.2E}")
 
     bar = tqdm.tqdm(data_loader, desc="Training")
-    for batch in bar:
+    for step, batch in enumerate(bar):
         optimizer.zero_grad()
         start_time = datetime.now()
         logits = model(batch)
@@ -97,6 +102,15 @@ def main():
         bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
         if config.use_wandb:
             wandb.log(metrics)
+
+        if config.checkpoint.should_save(step=step, max_steps=len(data_loader)):
+            checkpoints.save_checkpoint(
+                tag=config.tag,
+                step=step,
+                model=model,
+                optimizer=optimizer,
+                output_config=config.output,
+            )
 
 
 if __name__ == "__main__":

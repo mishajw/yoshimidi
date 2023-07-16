@@ -12,3 +12,14 @@ class OutputConfig(BaseModel, extra="forbid"):
     dataset_raw_compressed: Path = dataset_dir / "dataset_raw.tar.gz"
 
     dataset_tokenized: Path = root / "dataset_tokenized"
+
+    checkpoints: Path = root / "checkpoints"
+
+    def get_checkpoint(self, tag: str, step: int) -> Path:
+        return self.checkpoints / tag / f"step_{step:06d}.pt"
+
+    def get_latest_checkpoint(self, tag: str) -> Path:
+        batch_paths = list((self.checkpoints / tag).iterdir())
+        assert len(batch_paths) > 0, (self, tag)
+        assert all(p.name.isdecimal() for p in batch_paths), batch_paths
+        return sorted(batch_paths, key=lambda p: int(p.name), reverse=True)[0]
