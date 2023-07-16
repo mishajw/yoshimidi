@@ -7,12 +7,12 @@ import dotenv
 import fire
 import torch
 import tqdm
+import wandb
 from loguru import logger
 from torch.utils.data import DataLoader
 
-import wandb
 from yoshimidi.data.midi_dataset import MidiDataset
-from yoshimidi.train.flops import calculate_flops
+from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.training_config import TrainingConfig
 from yoshimidi.train.transformer import Transformer
@@ -33,10 +33,11 @@ def main(dataset_path: str):
         "Transformer config: "
         + json.dumps(dataclasses.asdict(transformer_config), indent=2)
     )
+    logger.info(f"Num parameters: {calculate_num_parameters(transformer_config):.2E}")
 
     logger.info("Initializing WandB...")
     wandb.login()
-    wandb.init(project="yoshimidi", name="2023-07-15_v1")
+    wandb.init(project="yoshimidi", name="2023-07-15_v1", dir=".wandb")
     logger.info("Initializing model...")
     model = Transformer(transformer_config)
     logger.info("Initializing dataset...")
