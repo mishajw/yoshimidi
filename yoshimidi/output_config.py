@@ -15,6 +15,9 @@ class OutputConfig(BaseModel, extra="forbid"):
 
     checkpoints: Path = root / "checkpoints"
 
+    def has_checkpoints(self, tag: str) -> Path:
+        return (self.checkpoints / tag).exists()
+
     def get_checkpoint(self, tag: str, step: int) -> Path:
         return self.checkpoints / tag / f"step_{step:06d}.pt"
 

@@ -37,7 +37,7 @@ class Config(BaseModel, extra="forbid"):
     checkpoint: CheckpointConfig = CheckpointConfig(
         every_n_steps=100,
     )
-    use_wandb: bool = False
+    use_wandb: bool = True
 
 
 def main():
@@ -45,6 +45,9 @@ def main():
     logger.info("Starting training")
     logger.info("Config: {}", config.model_dump_json(indent=2))
     logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")
+    assert not config.output.has_checkpoints(
+        tag=config.tag
+    ), f"Checkpoints already exist for tag: {config.tag}"
 
     if config.use_wandb:
         wandb.login()
