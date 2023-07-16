@@ -4,8 +4,8 @@ import numpy as np
 from jaxtyping import Float
 
 from yoshimidi.data.parse.tracks import Channel
+from yoshimidi.data.token_format import PIECE_LENGTHS, VOCAB
 
-VOCAB = 28  # 4 + 12 + 11 + 1
 DTYPE = np.float32
 
 # jaxtyping
@@ -72,26 +72,37 @@ def _create_token(
 ) -> None:
     index = 0
 
-    if kind == "on":
-        mmap[0] = 1
-    elif kind == "off":
-        mmap[1] = 1
-    elif kind == "pause":
-        mmap[2] = 1
-    elif kind == "end":
-        mmap[3] = 1
-    index += 4
+    for piece, piece_length in PIECE_LENGTHS.items():
+        if piece == "kind":
+            assert piece_length == 4
+            if kind == "on":
+                mmap[index] = 1
+            elif kind == "off":
+                mmap[index + 1] = 1
+            elif kind == "pause":
+                mmap[index + 2] = 1
+            elif kind == "end":
+                mmap[index + 3] = 1
 
-    if note is not None:
-        assert 0 <= note < 128, note
-        mmap[index + note % 12] = 1
-    index += 12
-    if note is not None:
-        mmap[index + note // 12] = 1
-    index += 11
+        elif piece == "note_key":
+            assert piece_length == 12
+            if note is not None:
+                assert 0 <= note < 128, note
+                mmap[index + note % 12] = 1
 
-    if time is not None:
-        mmap[index] = time
-    index += 1
+        elif piece == "note_octave":
+            assert piece_length == 11
+            if note is not None:
+                mmap[index + note // 12] = 1
+
+        elif piece == "time":
+            assert piece_length == 1
+            if time is not None:
+                mmap[index] = time
+
+        else:
+            raise ValueError(piece)
+
+        index += piece_length
 
     assert index == mmap.shape[0], (index, mmap.shape[0])

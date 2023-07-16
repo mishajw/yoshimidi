@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from yoshimidi.data.parse.token_parsing import VOCAB
+from yoshimidi.data.token_format import VOCAB
 
 
 @dataclass

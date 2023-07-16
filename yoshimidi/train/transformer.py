@@ -1,7 +1,8 @@
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.parse.token_parsing import VOCAB
+from yoshimidi.data.token_format import VOCAB
+from yoshimidi.train.midi_activation import midi_activation
 from yoshimidi.train.transformer_config import TransformerConfig
 
 
@@ -49,8 +50,7 @@ class Transformer(torch.nn.Module):
         for block in self.blocks:
             residual_stream = block(residual_stream)
         outputs = residual_stream @ self.token_embeddings.T
-        # TODO: Use softmax that works for MIDI.
-        return torch.nn.functional.softmax(outputs, dim=2)
+        return midi_activation(outputs)
 
 
 class _TransformerBlock(torch.nn.Module):

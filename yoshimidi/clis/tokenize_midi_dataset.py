@@ -12,6 +12,7 @@ from jaxtyping import Float
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Track
+from yoshimidi.data.token_format import VOCAB
 
 
 @dataclass
@@ -27,7 +28,7 @@ class _TokenizeState:
         self.memmap = np.memmap(
             self.output_dir / f"tokens_{self.index:04d}.npy",
             dtype=np.float32,
-            shape=(self.lines_per_file, token_parsing.VOCAB),
+            shape=(self.lines_per_file, VOCAB),
             mode="w+",
         )
 
