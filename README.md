@@ -27,7 +27,7 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [x] Basic training loop.
 - [ ] Inference loop.
 - [ ] Train/eval split.
-- [ ] Checkpointing.
+- [x] Checkpointing.
 - [ ] Categorical loss for time, a la MuZero. [stretch]
 
 ### Milestone 2: Control tokens
