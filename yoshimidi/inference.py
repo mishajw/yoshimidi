@@ -16,6 +16,7 @@ def run_inference(
     model: Transformer,
     prompt: Channel,
     max_new_tokens: int,
+    temperature: float = 1,
 ) -> Generator[Note, None, None]:
     # TODO: Remove [:-1] hack.
     tokens = torch.tensor(token_parsing.from_channel(prompt, include_end=False))
@@ -26,7 +27,9 @@ def run_inference(
         activations = midi_activation(logits)[0, -1, :]
 
         lower, upper = token_format.piece_range("kind")
-        kind = token_format.KINDS[_sample(activations[lower:upper])]
+        kind = token_format.KINDS[
+            _sample(activations[lower:upper], temperature=temperature)
+        ]
 
         if kind == "pause":
             assert current_time_delta_secs is None
@@ -40,9 +43,9 @@ def run_inference(
         if kind == "on" or kind == "off":
             assert current_time_delta_secs is not None
             lower, upper = token_format.piece_range("note_key")
-            note_key = _sample(activations[lower:upper])
+            note_key = _sample(activations[lower:upper], temperature=temperature)
             lower, upper = token_format.piece_range("note_octave")
-            note_octave = _sample(activations[lower:upper])
+            note_octave = _sample(activations[lower:upper], temperature=temperature)
             note = note_key + 12 * note_octave
             yield Note(
                 note=note,
@@ -63,5 +66,11 @@ def run_inference(
             break
 
 
-def _sample(probabilities: torch.Tensor) -> int:
+def _sample(
+    probabilities: torch.Tensor,
+    temperature: float,
+) -> int:
+    if temperature == 0:
+        return int(probabilities.argmax().item())
+    probabilities /= temperature
     return int(probabilities.multinomial(num_samples=1, replacement=True).item())
