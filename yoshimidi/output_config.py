@@ -18,7 +18,7 @@ class OutputConfig(BaseModel, extra="forbid"):
 
     checkpoints: Path = root / "checkpoints"
 
-    def has_checkpoints(self, tag: str) -> Path:
+    def has_checkpoints(self, tag: str) -> bool:
         return (self.checkpoints / tag).exists()
 
     def get_checkpoint(self, tag: str, step: int) -> Path:
@@ -32,6 +32,8 @@ class OutputConfig(BaseModel, extra="forbid"):
         ), batch_paths
         return sorted(
             batch_paths,
-            key=lambda p: int(_CHECKPOINT_NAME_REGEX.fullmatch(p.name).group(1)),
+            key=lambda p: int(
+                _CHECKPOINT_NAME_REGEX.fullmatch(p.name).group(1),  # type: ignore
+            ),
             reverse=True,
         )[0]

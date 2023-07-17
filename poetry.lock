@@ -2555,6 +2555,18 @@ files = [
 types-urllib3 = "*"
 
 [[package]]
+name = "types-toml"
+version = "0.10.8.6"
+description = "Typing stubs for toml"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-toml-0.10.8.6.tar.gz", hash = "sha256:6d3ac79e36c9ee593c5d4fb33a50cca0e3adceb6ef5cff8b8e5aef67b4c4aaf2"},
+    {file = "types_toml-0.10.8.6-py3-none-any.whl", hash = "sha256:de7b2bb1831d6f7a4b554671ffe5875e729753496961b3e9b202745e4955dafa"},
+]
+
+[[package]]
 name = "types-tqdm"
 version = "4.65.0.1"
 description = "Typing stubs for tqdm"
@@ -2709,4 +2721,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1dbc24fd94f695815335f810d5a1589a7d2e8cf1770562258e138044a8e1dd2e"
+content-hash = "5eb80d16a91a7e0f4f62bb02814a631f289b934a1a084a21614931287f05960d"
