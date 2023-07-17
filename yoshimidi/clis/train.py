@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 import dotenv
@@ -45,7 +44,6 @@ def main(config_path: str):
 
     if config.use_wandb:
         logger.info("Setting up WandB")
-        os.environ["WANDB_SILENT"] = "true"
         wandb.login()
         wandb.init(project="yoshimidi", name=config.tag, dir=".wandb")
 
