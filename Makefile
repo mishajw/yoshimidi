@@ -15,7 +15,12 @@ mypy:
 
 .PHONY: du
 du:
-	du -sh out/* out/dataset/* out/checkpoints/*
+	@echo "> out"
+	@du -sh out/*
+	@echo "> dataset"
+	@du -sh out/dataset/*
+	@echo "> checkpoints"
+	@du -sh out/checkpoints/*
 
 # Dataset prep
 # ============
