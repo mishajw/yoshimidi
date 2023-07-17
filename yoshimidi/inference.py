@@ -1,5 +1,5 @@
 import itertools
-from typing import Generator, Literal
+from typing import Generator
 
 import torch
 import tqdm
@@ -18,54 +18,44 @@ def run_inference(
     max_new_tokens: int,
 ) -> Generator[Note, None, None]:
     # TODO: Remove [:-1] hack.
-    tokens = torch.tensor(token_parsing.from_channel(prompt, include_end=False)[:-1])
+    tokens = torch.tensor(token_parsing.from_channel(prompt, include_end=False))
     prompt_length = tokens.size(0)
-    current_note: int | None = None
-    current_note_kind: Literal["on", "off"] | None = None
+    current_time_delta_secs: float | None = None
     for _ in tqdm.tqdm(itertools.count(), desc="Generating tokens"):
         logits = model(tokens.unsqueeze(0))
         activations = midi_activation(logits)[0, -1, :]
 
         lower, upper = token_format.piece_range("kind")
-        # activations[upper - 1] = 0
         kind = token_format.KINDS[_sample(activations[lower:upper])]
 
+        if kind == "pause":
+            assert current_time_delta_secs is None
+            lower, upper = token_format.piece_range("time")
+            # current_time_delta_secs = max(0, activations[lower].item())
+            time_support = torch.nn.functional.softmax(activations[lower:upper]).numpy()
+            current_time_delta_secs = token_format.support_to_time(time_support)
+            next_token = token_parsing.create_torch_token(
+                "pause", time=current_time_delta_secs
+            )
+
         if kind == "on" or kind == "off":
-            assert current_note is None
-            assert current_note_kind is None
+            assert current_time_delta_secs is not None
             lower, upper = token_format.piece_range("note_key")
             note_key = _sample(activations[lower:upper])
             lower, upper = token_format.piece_range("note_octave")
             note_octave = _sample(activations[lower:upper])
-            current_note = note_key + 12 * note_octave
-            current_note_kind = kind
-            next_token = token_parsing.create_torch_token(kind, note=current_note)
-
-        if kind == "pause":
-            assert current_note is not None
-            assert current_note_kind is not None
-            lower, upper = token_format.piece_range("time")
-            assert lower + 1 == upper
-            time_delta = max(0, activations[lower].item())
+            note = note_key + 12 * note_octave
             yield Note(
-                note=current_note,
-                kind=current_note_kind,
+                note=note,
+                kind=kind,
                 velocity=127,
-                time_delta_secs=time_delta,
+                time_delta_secs=current_time_delta_secs,
             )
-            current_note = None
-            current_note_kind = None
-            next_token = token_parsing.create_torch_token("pause", time=time_delta)
+            current_time_delta_secs = None
+            next_token = token_parsing.create_torch_token(kind, note=note)
 
         if kind == "end":
-            assert current_note is not None
-            assert current_note_kind is not None
-            yield Note(
-                note=current_note,
-                kind=current_note_kind,
-                velocity=128,
-                time_delta_secs=0,
-            )
+            assert current_time_delta_secs is None
             break
 
         tokens = torch.cat([tokens, next_token.unsqueeze(0)])

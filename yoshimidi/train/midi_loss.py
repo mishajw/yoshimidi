@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.token_format import PIECE_LENGTHS
+from yoshimidi.data.token_format import NUM_TIME_SUPPORTS, PIECE_LENGTHS
 
 
 @dataclass
@@ -30,29 +30,29 @@ def autoregressive_midi_loss(
         if piece == "kind":
             assert piece_length == 4
             kind_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + 4],
-                labels[:, index : index + 4],
+                logits[:, index : index + piece_length],
+                labels[:, index : index + piece_length],
             )
 
         elif piece == "note_key":
             assert piece_length == 12
             note_key_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + 12],
-                labels[:, index : index + 12],
+                logits[:, index : index + piece_length],
+                labels[:, index : index + piece_length],
             )
 
         elif piece == "note_octave":
             assert piece_length == 11
             note_octave_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + 11],
-                labels[:, index : index + 11],
+                logits[:, index : index + piece_length],
+                labels[:, index : index + piece_length],
             )
 
         elif piece == "time":
-            assert piece_length == 1
-            time_loss = torch.nn.functional.mse_loss(
-                logits[:, index],
-                labels[:, index],
+            assert piece_length == NUM_TIME_SUPPORTS
+            time_loss = torch.nn.functional.cross_entropy(
+                logits[:, index : index + piece_length],
+                labels[:, index : index + piece_length],
             )
 
         index += piece_length
