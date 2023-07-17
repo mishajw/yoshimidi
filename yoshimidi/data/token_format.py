@@ -6,7 +6,7 @@ PieceType: TypeAlias = Literal["kind", "note_key", "note_octave", "time"]
 KindType: TypeAlias = Literal["on", "off", "pause", "end"]
 
 _TIME_SUPPORTS = [0, *[2**exponent for exponent in range(-8, 1)], 300]
-NUM_TIME_SUPPORTS = len(_TIME_SUPPORTS)  # 10
+NUM_TIME_SUPPORTS = len(_TIME_SUPPORTS)  # 11
 
 KINDS: list[KindType] = ["on", "off", "pause", "end"]
 PIECE_LENGTHS: dict[PieceType, int] = {

@@ -31,8 +31,7 @@ def run_inference(
         if kind == "pause":
             assert current_time_delta_secs is None
             lower, upper = token_format.piece_range("time")
-            # current_time_delta_secs = max(0, activations[lower].item())
-            time_support = torch.nn.functional.softmax(activations[lower:upper]).numpy()
+            time_support = activations[lower:upper].numpy()
             current_time_delta_secs = token_format.support_to_time(time_support)
             next_token = token_parsing.create_torch_token(
                 "pause", time=current_time_delta_secs
