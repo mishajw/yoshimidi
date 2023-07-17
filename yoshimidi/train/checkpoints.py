@@ -52,6 +52,7 @@ def load_checkpoint(
         checkpoint_path = output_config.get_latest_checkpoint(tag=tag)
     else:
         checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
+    logger.info("Loading checkpoint: {}", checkpoint_path)
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

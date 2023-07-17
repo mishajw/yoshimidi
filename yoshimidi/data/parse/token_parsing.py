@@ -28,14 +28,13 @@ def from_channel_to_buffer(
     index = 0
     for note_index in range(len(channel.notes)):
         note = channel.notes[note_index]
-        _create_token(output[index], kind=note.kind, note=note.note)
-        index += 1
         if note_index < len(channel.notes) - 1:
             _create_token(output[index], kind="pause", time=note.time_delta_secs)
             index += 1
-        else:
-            _create_token(output[index], kind="end")
-            index += 1
+        _create_token(output[index], kind=note.kind, note=note.note)
+        index += 1
+    _create_token(output[index], kind="end")
+    index += 1
     assert index == output.shape[0]
 
 

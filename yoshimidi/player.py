@@ -24,7 +24,6 @@ def play_channel(channel: Channel) -> None:
     track = Track(channels={0: channel}, metadata=TrackMetadata())
     midi_track = midi_parsing.from_tracks([track])
     with NamedTemporaryFile() as temp_file:
-        print(temp_file.name)
         midi_track.save(temp_file.name)
         play(Path(temp_file.name))
 
