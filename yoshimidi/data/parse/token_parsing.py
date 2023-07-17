@@ -1,11 +1,10 @@
-from typing import Literal
-
 import numpy as np
 import torch
 from jaxtyping import Float
 
+from yoshimidi.data import token_format
 from yoshimidi.data.parse.tracks import Channel
-from yoshimidi.data.token_format import PIECE_LENGTHS, VOCAB
+from yoshimidi.data.token_format import PIECE_LENGTHS, VOCAB, KindType
 
 DTYPE = np.float32
 
@@ -28,9 +27,8 @@ def from_channel_to_buffer(
     index = 0
     for note_index in range(len(channel.notes)):
         note = channel.notes[note_index]
-        if note_index < len(channel.notes) - 1:
-            _create_token(output[index], kind="pause", time=note.time_delta_secs)
-            index += 1
+        _create_token(output[index], kind="pause", time=note.time_delta_secs)
+        index += 1
         _create_token(output[index], kind=note.kind, note=note.note)
         index += 1
     _create_token(output[index], kind="end")
@@ -39,7 +37,7 @@ def from_channel_to_buffer(
 
 
 def create_torch_token(
-    kind: Literal["on", "off", "pause", "end"],
+    kind: KindType,
     *,
     note: int | None = None,
     time: float | None = None,
@@ -50,10 +48,10 @@ def create_torch_token(
 
 
 def get_buffer_size(channel: Channel):
-    return (len(channel.notes) * 2, VOCAB)
+    return (len(channel.notes) * 2 + 1, VOCAB)
 
 
-def get_kind(token: Float[np.ndarray, "vocab"]) -> Literal["on", "off", "pause", "end"]:
+def get_kind(token: Float[np.ndarray, "vocab"]) -> KindType:
     if token[0] == 1:
         return "on"
     elif token[1] == 1:
@@ -73,12 +71,13 @@ def get_note(token: Float[np.ndarray, "vocab"]) -> int:
 
 def get_time_secs(token: Float[np.ndarray, "vocab"]) -> float:
     assert get_kind(token) == "pause"
-    return token[27]
+    start, end = token_format.piece_range("time")
+    return token_format.support_to_time(token[start:end])
 
 
 def _create_token(
     mmap: Float[np.ndarray, "vocab"],
-    kind: Literal["on", "off", "pause", "end"],
+    kind: KindType,
     *,
     note: int | None = None,
     time: float | None = None,
@@ -109,9 +108,8 @@ def _create_token(
                 mmap[index + note // 12] = 1
 
         elif piece == "time":
-            assert piece_length == 1
             if time is not None:
-                mmap[index] = time
+                token_format.time_to_support(time, mmap[index : index + piece_length])
 
         else:
             raise ValueError(piece)

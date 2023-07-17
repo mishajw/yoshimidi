@@ -8,6 +8,7 @@ from mido import Message, MidiTrack
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
+from yoshimidi.data.token_format import VOCAB
 
 DEFAULT_TICKS_PER_BEAT = 120
 DEFAULT_TEMPO = 447761
@@ -90,22 +91,22 @@ def _parse_event(
 def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
     channels = []
     for channel in channel_tokens:
-        assert channel.shape[1] == 28
+        assert channel.shape[1] == VOCAB
         notes = []
 
         idx = 0
         while idx < channel.shape[0]:
             kind = token_parsing.get_kind(channel[idx])
-            assert kind == "on" or kind == "off", kind
-            note = token_parsing.get_note(channel[idx])
-            idx += 1
-
-            pause_kind = token_parsing.get_kind(channel[idx])
-            if pause_kind == "end":
+            if kind == "end":
                 assert idx == channel.shape[0] - 1
                 break
-            assert pause_kind == "pause", pause_kind
+            assert kind == "pause", kind
             time_secs = token_parsing.get_time_secs(channel[idx])
+            idx += 1
+
+            kind = token_parsing.get_kind(channel[idx])
+            assert kind == "on" or kind == "off", kind
+            note = token_parsing.get_note(channel[idx])
             idx += 1
 
             notes.append(
