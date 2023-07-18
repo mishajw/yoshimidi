@@ -28,7 +28,7 @@ class _TokenizeState:
     def open_mmap(self) -> None:
         self.memmap = np.memmap(
             self.output_dir / f"tokens_{self.index:04d}.npy",
-            dtype=np.float32,
+            dtype=token_parsing.DTYPE,
             shape=(self.lines_per_file, VOCAB),
             mode="w+",
         )

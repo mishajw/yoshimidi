@@ -15,7 +15,7 @@ PIECE_LENGTHS: dict[PieceType, int] = {
     "note_octave": 11,
     "time": len(_TIME_SUPPORTS),
 }
-VOCAB = sum(PIECE_LENGTHS.values())  # 35
+VOCAB = sum(PIECE_LENGTHS.values())  # 38
 
 
 def piece_range(piece_type: PieceType) -> Tuple[int, int]:

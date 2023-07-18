@@ -23,7 +23,7 @@ def run_inference(
     prompt_length = tokens.size(0)
     current_time_delta_secs: float | None = None
     for _ in tqdm.tqdm(itertools.count(), desc="Generating tokens"):
-        logits = model(tokens.unsqueeze(0))
+        logits = model(tokens.unsqueeze(0).float())
         activations = midi_activation(logits)[0, -1, :]
 
         lower, upper = token_format.piece_range("kind")

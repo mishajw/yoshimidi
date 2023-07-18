@@ -6,7 +6,7 @@ from yoshimidi.data import token_format
 from yoshimidi.data.parse.tracks import Channel
 from yoshimidi.data.token_format import PIECE_LENGTHS, VOCAB, KindType
 
-DTYPE = np.float32
+DTYPE = np.float16
 
 # jaxtyping
 seq, vocab = None, None

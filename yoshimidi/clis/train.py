@@ -69,7 +69,7 @@ def main(config_path: str):
     for step, batch in enumerate(bar):
         optimizer.zero_grad()
         start_time = datetime.now()
-        logits = model(batch)
+        logits = model(batch.float())
         loss_values = autoregressive_midi_loss(batch=batch, logits=logits)
         loss_values.loss.backward()
         optimizer.step()

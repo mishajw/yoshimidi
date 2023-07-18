@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.token_format import VOCAB
 
 
@@ -26,9 +27,9 @@ class MidiDataset(Dataset):
             end_indices = np.fromfile(end_indices_path, dtype=np.int32).tolist()
             index = end_indices_path.stem[len("end_indicies_") :]
             memmap = np.memmap(
-                path / f"tokens_{index}.npy", dtype=np.float32, mode="r"
+                path / f"tokens_{index}.npy", dtype=token_parsing.DTYPE, mode="r"
             ).reshape((-1, VOCAB))
-            assert memmap.shape == (2**22, VOCAB)
+            assert memmap.shape == (2**22, VOCAB), memmap.shape
             memmap = memmap[: end_indices[-1]]
             all_end_indices.append(end_indices)
             all_memmaps.append(memmap)

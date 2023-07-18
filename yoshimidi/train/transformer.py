@@ -124,7 +124,12 @@ class _AttentionHead(torch.nn.Module):
         values = qkv[:, :, self.attention_head_size * 2 :]
         attention_logits = queries @ keys.transpose(2, 1)
         attention_mask = torch.triu(
-            torch.full((seq_len, seq_len), fill_value=-1e6), diagonal=1
+            torch.full(
+                (seq_len, seq_len),
+                fill_value=-1e6,
+                dtype=head_stream.dtype,
+            ),
+            diagonal=1,
         )
         attention = torch.nn.functional.softmax(
             (attention_logits * attention_mask) / (self.attention_head_size**0.5),
@@ -162,11 +167,17 @@ class _PositionalEncoding(torch.nn.Module):
         self.residual_stream_size = residual_stream_size
 
     def forward(self, x: torch.Tensor, seq_dim: int = -2) -> torch.Tensor:
-        if self.encodings is None or self.encodings.shape[0] != x.shape[seq_dim]:
-            self.encodings = self._generate_encodings(x, seq_dim)
+        if (
+            self.encodings is None
+            or self.encodings.shape[0] != x.shape[seq_dim]
+            or self.encodings.dtype != x.dtype
+        ):
+            self.encodings = self._generate_encodings(x, seq_dim, x.dtype)
         return x + self.encodings
 
-    def _generate_encodings(self, x: torch.Tensor, seq_dim: int) -> torch.Tensor:
+    def _generate_encodings(
+        self, x: torch.Tensor, seq_dim: int, dtype: torch.dtype
+    ) -> torch.Tensor:
         result = torch.tensor(
             [
                 [
@@ -174,7 +185,8 @@ class _PositionalEncoding(torch.nn.Module):
                     for i in range(self.residual_stream_size)
                 ]
                 for pos in range(x.shape[seq_dim])
-            ]
+            ],
+            dtype=dtype,
         )
         result[:, 0::2] = torch.sin(result[:, 0::2])
         result[:, 1::2] = torch.cos(result[:, 1::2])
