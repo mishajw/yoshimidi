@@ -5,7 +5,7 @@ USER root
 WORKDIR /app
 # Apt dependencies.
 RUN apt-get -y update && \
-    apt-get install -y wget && \
+    apt-get install -y wget build-essential && \
     rm -rf /var/lib/apt/lists/*
 # Install s5cmd.
 RUN S5CMD_DEB="$(mktemp)" && \
