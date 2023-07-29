@@ -15,7 +15,6 @@ RUN S5CMD_DEB="$(mktemp)" && \
     rm "$S5CMD_DEB"
 # Install Poetry.
 ENV PYTHONIOENCODING=utf-8
-ENV POETRY_CONFIG_DIR=/app/.poetry
 ENV PATH="${PATH}:/opt/conda/bin"
 RUN pip install poetry==1.4.1
 RUN poetry config virtualenvs.create false
