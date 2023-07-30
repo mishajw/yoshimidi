@@ -30,9 +30,17 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [x] Transformer implementation.
   - [x] Positional encodings.
 - [x] Basic training loop.
-- [ ] Inference loop.
-- [ ] Train/eval split.
+- [x] Inference loop.
+- [ ] Evals:
+  - [ ] Eval schedules.
+  - [ ] Train/eval split.
+  - [ ] Save MIDI files at each eval step.
 - [x] Checkpointing.
+- [ ] Train a good model.
+  - [ ] Figure out why making it larger makes performance worse.
+  - [ ] Set up Docker image for training.
+  - [ ] Figure out vast.ai for training.
+  - [ ] Do a big training run!
 
 ### Milestone 2: Control tokens
 
@@ -44,3 +52,9 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Categorical loss for time, a la MuZero.
 - [ ] Implement GPT-2/3/J architectures.
 - [ ] Implement better initialization schemes.
+- [ ] Better tokenization of dataset.
+
+## Notes
+- ok, going to end up wanting to iterate quickly, esp. when messing with architectures. so for now, i'll set up a docker image + vast.ai + AWS S3.
+- dockerfile done (i hope...), waiting for it to build then will try to get something simple up on vast.ai
+-
