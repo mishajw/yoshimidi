@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import Optional
 
 import mido
+import msgspec
 import numpy as np
 from loguru import logger
 from mido import Message, MidiTrack
@@ -19,7 +19,7 @@ def from_midi(
     *,
     ticks_per_beat: float,
     log_warnings: bool = True,
-) -> Optional[Track]:
+) -> Track | None:
     track = Track(
         channels=defaultdict(lambda: Channel(notes=[], program_nums=[])),
         metadata=TrackMetadata(),
@@ -47,7 +47,9 @@ def from_midi(
             track.channels[message.channel].notes.append(note)
 
     track.channels = {
-        channel_num: channel
+        channel_num: msgspec.structs.replace(
+            channel, notes=_shift_time_deltas(channel.notes)
+        )
         for channel_num, channel in track.channels.items()
         if len(channel.notes) > 0
     }
@@ -56,11 +58,15 @@ def from_midi(
 
 def _parse_note(
     message: Message, *, ticks_per_beat: float, tempo: float
-) -> Optional[Note]:
-    if message.channel == 9:
-        return None  # Skip drum channel.
+) -> Note | None:
+    """
+    N.B.: This function must be combnied with _shift_time_deltas() to get the correct
+    time deltas.
+    """
     if message.is_meta or message.type == "sysex":
         return None
+    if message.channel == 9:
+        return None  # Skip drum channel.
     time_secs = mido.tick2second(
         tick=message.time, ticks_per_beat=ticks_per_beat, tempo=tempo
     )
@@ -84,6 +90,28 @@ def _parse_note(
         )
     else:
         return None
+
+
+def _shift_time_deltas(notes: list[Note]) -> list[Note]:
+    shifted_notes = []
+    for note1, note2 in zip(notes[:-1], notes[1:], strict=True):
+        shifted_notes.append(
+            Note(
+                note=note1.note,
+                kind=note1.kind,
+                velocity=note1.velocity,
+                time_delta_secs=note2.time_delta_secs,
+            )
+        )
+    shifted_notes.append(
+        Note(
+            note=notes[-1].note,
+            kind=notes[-1].kind,
+            velocity=notes[-1].velocity,
+            time_delta_secs=0,
+        )
+    )
+    return shifted_notes
 
 
 def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
