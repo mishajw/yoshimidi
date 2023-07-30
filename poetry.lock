@@ -2875,6 +2875,21 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "vastai"
+version = "0.1.6"
+description = "Vast.ai Python CLI"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "vastai-0.1.6-py3-none-any.whl", hash = "sha256:c08b01ec298cfd10258668fe53996e93c4bea19d2cad8d8bf543f1fad24707e9"},
+    {file = "vastai-0.1.6.tar.gz", hash = "sha256:7abcd49c7475f075cbd1df9469a76ad28b7bd16bca1a514acac1f9f0b70802b4"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "virtualenv"
 version = "20.24.2"
 description = "Virtual Python Environment builder"
@@ -2978,4 +2993,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "71b17ffca433e72adfa6489c1922cc14da36b088459aa0f31faa2add220f7609"
+content-hash = "b472215838338eccb949573ddb79fd62989505899e9c6be359fa201f5312b3f0"

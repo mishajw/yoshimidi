@@ -13,6 +13,11 @@ make tokenize
 make train
 ```
 
+## Infra
+- **Docker**: We build an image from `Dockerfile` which is pushed to [Docker Hub](https://hub.docker.com/repository/docker/mishajw/yoshimidi/).
+- **S3**: There's an S3 bucket containing all training data + checkpoints under `s3://yoshimidi`.
+- **Vast.ai**: Training is done on 1x RTX 3090 GPU from Vast.ai (~$0.05/hour).
+
 ## Milestones
 
 ### Milestone 1: Music generation

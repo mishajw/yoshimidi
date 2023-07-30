@@ -3,3 +3,8 @@
 __pycache__
 out
 .wandb
+.DS_Store
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv

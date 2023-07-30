@@ -33,6 +33,7 @@ types-requests = "^2.31.0.1"
 ipykernel = "^6.23.3"
 types-tqdm = "^4.65.0.1"
 types-toml = "^0.10.8.6"
+vastai = "^0.1.6"
 
 [build-system]
 requires = ["poetry-core"]
