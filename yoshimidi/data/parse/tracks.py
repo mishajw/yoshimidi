@@ -12,6 +12,7 @@ class Note(msgspec.Struct):
     note: int
     kind: Literal["on", "off"]
     velocity: int
+    # The amount of time to wait *before* this note is played.
     time_delta_secs: float
 
 
