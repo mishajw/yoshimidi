@@ -34,21 +34,17 @@ def from_midi(
 
     message: Message
     for message in midi_track:
-        if message.is_meta or message.type == "sysex":
-            continue
         if message.type == "stop":
             if log_warnings:
                 logger.warning(f"Found stop message: {message}")
             return None
-        if message.channel == 9:
-            # Skip drum channel.
-            continue
-        _parse_event(
+        note = _parse_note(
             message,
-            track.channels[message.channel],
             ticks_per_beat=ticks_per_beat,
             tempo=tempo,
         )
+        if note is not None:
+            track.channels[message.channel].notes.append(note)
 
     track.channels = {
         channel_num: channel
@@ -58,34 +54,36 @@ def from_midi(
     return track
 
 
-def _parse_event(
-    message: Message, channel: Channel, *, ticks_per_beat: float, tempo: float
-) -> None:
+def _parse_note(
+    message: Message, *, ticks_per_beat: float, tempo: float
+) -> Optional[Note]:
+    if message.channel == 9:
+        return None  # Skip drum channel.
+    if message.is_meta or message.type == "sysex":
+        return None
     time_secs = mido.tick2second(
         tick=message.time, ticks_per_beat=ticks_per_beat, tempo=tempo
     )
     if message.type == "note_on" and message.velocity > 0:
-        channel.notes.append(
-            Note(
-                note=message.note,
-                kind="on",
-                velocity=message.velocity,
-                time_delta_secs=time_secs,
-            )
+        return Note(
+            note=message.note,
+            kind="on",
+            velocity=message.velocity,
+            time_delta_secs=time_secs,
         )
     elif (
         message.type == "note_off"
         or message.type == "note_on"
         and message.velocity == 0
     ):
-        channel.notes.append(
-            Note(
-                note=message.note,
-                kind="off",
-                velocity=message.velocity,
-                time_delta_secs=time_secs,
-            )
+        return Note(
+            note=message.note,
+            kind="off",
+            velocity=message.velocity,
+            time_delta_secs=time_secs,
         )
+    else:
+        return None
 
 
 def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
