@@ -23,7 +23,10 @@ def time_from_uint8(time_uint8: int) -> float:
         return 0.0
     time_norm = float(time_uint8) / 2**8
     time_log = time_norm * (_TIME_LOG_MAX - _TIME_LOG_MIN) + _TIME_LOG_MIN
-    return math.exp(time_log)
+    time = math.exp(time_log)
+    assert time > -1e-3
+    time = max(time, 0)
+    return time
 
 
 def time_uint8_to_support(time: int, output: torch.Tensor) -> None:

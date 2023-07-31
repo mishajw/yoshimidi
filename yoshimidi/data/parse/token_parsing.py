@@ -43,17 +43,6 @@ def from_channel_to_buffer(
     _create_token_in_buffer(output[-1], kind="end", note=0, time_delta_secs=0)
 
 
-# def create_torch_token(
-#     kind: KindType,
-#     *,
-#     note: int,
-#     time: float,
-# ) -> torch.Tensor:
-#     result = np.zeros(TOKEN_DIM)
-#     _create_token(result, kind, note=note, time_delta_secs=time)
-#     return torch.Tensor(result)
-
-
 def get_buffer_size(channel: Channel):
     return (len(channel.notes) + 1, len(_TOKEN_FIELDS))
 
