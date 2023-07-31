@@ -43,6 +43,7 @@ train:
 
 # S3
 # ==
+
 .PHONY: s3-download
 s3-download:
 	env \
@@ -53,29 +54,13 @@ s3-download:
 # =======
 
 .PHONY: vast-ssh
-vast-ssh: vast-rsync
-	HOST=$$( \
-		vastai show instances --raw \
-		| jq -r '.[] | .ssh_host') && \
-	PORT=$$( \
-		vastai show instances --raw \
-		| jq -r '.[] | .ssh_port') && \
-	ssh root@$$HOST -p $$PORT bash -c "cd /app && make $(CMD)"
+vast-ssh:
+	poetry run python youshimidi/clis/vastai.py ssh
+
+.PHONY: vast-make
+vast-make: vast-rsync
+	poetry run python youshimidi/clis/vastai.py make $(CMD)
 
 .PHONY: vast-rsync
 vast-rsync:
-	HOST=$$( \
-		vastai show instances --raw \
-		| jq -r '.[] | .public_ipaddr') && \
-	PORT=$$( \
-		vastai show instances --raw \
-		| jq -r '.[] | .direct_port_start') && \
-	rsync -r \
-		-e "ssh -p $$PORT" \
-		--filter=':- .gitignore' \
-		--filter='- .git' \
-		. \
-		root@$$HOST:/app && \
-	rsync -r \
-		-e "ssh -p $$PORT" \
-		.env root@$$HOST:/app/.env
+	poetry run python youshimidi/clis/vastai.py rsync
