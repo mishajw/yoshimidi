@@ -25,7 +25,6 @@ A language model with no control tokens that produces coherent-ish sounding musi
 
 - [x] Data preparation (parsing, tokenization, etc).
   - [x] Complete data generation run.
-  - [ ] Shuffling dataset.
   - [ ] Fix memmap boundaries issue.
 - [x] Transformer implementation.
   - [x] Positional encodings.
@@ -38,8 +37,8 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [x] Checkpointing.
 - [ ] Train a good model.
   - [ ] Figure out why making it larger makes performance worse.
-  - [ ] Set up Docker image for training.
-  - [ ] Figure out vast.ai for training.
+  - [x] Set up Docker image for training.
+  - [x] Figure out vast.ai for training.
   - [ ] Do a big training run!
 
 ### Milestone 2: Control tokens
@@ -53,8 +52,14 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Implement GPT-2/3/J architectures.
 - [ ] Implement better initialization schemes.
 - [ ] Better tokenization of dataset.
+- [ ] Shuffle tokenized dataset.
 
 ## Notes
-- realised that we have *way* too inefficent storing of dataset: we store it one-hot!
-- let's fix that
-- while we're there, let's also change the format such that it's (on/off, key pressed, sleep after)
+- parsing+tokenizing data in background, eta 2H?
+  - plus upload time, est. 10G @ 2MBs => 1.4h
+  - so 4 hours total ==> 4PM
+- let's try to train a good model this evening.
+- still needed:
+  - gpu support
+  - bf16?
+  - evals?
