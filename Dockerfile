@@ -2,10 +2,14 @@ FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
 LABEL name=yoshimidi
 LABEL version=0.1.0
 USER root
-WORKDIR /app
+WORKDIR /root/yoshimidi
 # Apt dependencies.
 RUN apt-get -y update && \
-    apt-get install -y wget build-essential && \
+    apt-get install -y \
+        wget \
+        build-essential \
+        htop \
+        && \
     rm -rf /var/lib/apt/lists/*
 # Install s5cmd.
 RUN S5CMD_DEB="$(mktemp)" && \
@@ -15,9 +19,10 @@ RUN S5CMD_DEB="$(mktemp)" && \
     rm "$S5CMD_DEB"
 # Install Poetry.
 ENV PYTHONIOENCODING=utf-8
-ENV PATH="${PATH}:/opt/conda/bin"
 RUN pip install poetry==1.4.1
 RUN poetry config virtualenvs.create false
 # Install Python dependencies via Poetry.
 COPY poetry.lock pyproject.toml ./
 RUN poetry install --no-interaction
+# Set up .bashrc.
+RUN echo 'PATH=:$PATH:/opt/conda/bin' >> ~/.bashrc
