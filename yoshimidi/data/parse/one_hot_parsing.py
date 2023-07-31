@@ -23,35 +23,33 @@ seq, token, vocab = None, None, None
 def from_tokens(
     input: UInt8[np.ndarray, "seq token"],  # noqa: F722
 ) -> Float[torch.Tensor, "seq vocab"]:  # noqa: F722
+    input_tensor = torch.tensor(input, dtype=torch.int64)
     output = torch.zeros((input.shape[0], VOCAB))
     index = 0
     for piece, piece_length in PIECE_LENGTHS.items():
         if piece == "kind":
-            output[index : index + piece_length] = torch.nn.functional.one_hot(
-                input[0],
-                num_classes=VOCAB,
-                out=len(KINDS),
+            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
+                input_tensor[:, 0],
+                num_classes=piece_length,
             )
         elif piece == "note_key":
-            output[index : index + piece_length] = torch.nn.functional.one_hot(
-                input[1] % 12,
-                num_classes=VOCAB,
-                out=len(KINDS),
+            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
+                input_tensor[:, 1] % 12,
+                num_classes=piece_length,
             )
         elif piece == "note_octave":
-            output[index : index + piece_length] = torch.nn.functional.one_hot(
-                input[1] // 12,
-                num_classes=VOCAB,
-                out=len(KINDS),
+            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
+                input_tensor[:, 1] // 12,
+                num_classes=piece_length,
             )
         elif piece == "time":
-            for seq_index in range(input.shape[0]):
+            for seq_index in range(input_tensor.shape[0]):
                 time_parsing.time_uint8_to_support(
                     input[seq_index, 2],
                     output[seq_index, index : index + piece_length],
                 )
         index += piece_length
-    assert index == output.shape[0], (index, output.shape[0])
+    assert index == output.shape[1], (index, output.shape[1])
     return output
 
 

@@ -29,7 +29,7 @@ def autoregressive_midi_loss(
 
     for piece, piece_length in PIECE_LENGTHS.items():
         if piece == "kind":
-            assert piece_length == 4
+            assert piece_length == 3
             kind_loss = torch.nn.functional.cross_entropy(
                 logits[:, index : index + piece_length],
                 labels[:, index : index + piece_length],
