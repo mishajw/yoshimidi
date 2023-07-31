@@ -50,7 +50,7 @@ def _parse_data_multiprocessing(
 ):
     counters: DefaultDict[str, int] = DefaultDict(int)
     midi_files = list(input_dir.rglob("*.mid"))
-    with multiprocessing.Pool(processes=4) as pool, output_file.open("wb") as f:
+    with multiprocessing.Pool() as pool, output_file.open("wb") as f:
         results = pool.imap_unordered(_parse_midi_path, midi_files)
         pbar = tqdm.tqdm(results, desc="Parsing files", total=len(midi_files))
         for result in pbar:
