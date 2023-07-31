@@ -53,7 +53,7 @@ def main(config_path: str):
     model = Transformer(config.transformer).to(
         device=config.training.torch_device(), dtype=config.training.torch_dtype()
     )
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.training.learning_rate)
     logger.debug(
         f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
     )
