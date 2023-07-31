@@ -32,8 +32,8 @@ class _TokenizeState:
             mode="w+",
         )
 
-    def write_end_indicies(self) -> None:
-        with (self.output_dir / f"end_indicies_{self.index:04d}.npy").open("wb") as f:
+    def write_end_indices(self) -> None:
+        with (self.output_dir / f"end_indices_{self.index:04d}.npy").open("wb") as f:
             np.array(self.end_indices, dtype=np.uint32).tofile(f)
 
     def get_slice(self, num_lines: int) -> np.ndarray:
@@ -48,7 +48,7 @@ class _TokenizeState:
         self.end_indices.append(self.written_lines)
 
     def next_index(self) -> None:
-        self.write_end_indicies()
+        self.write_end_indices()
         self.index += 1
         self.written_lines = 0
         self.end_indices = []
@@ -96,7 +96,7 @@ def _tokenize(
         token_parsing.from_channel_to_buffer(channel, state.get_slice(channel_lines))
         state.register_lines_written(channel_lines)
         pbar.set_postfix(idx=state.index, lines=state.written_lines)
-    state.write_end_indicies()
+    state.write_end_indices()
 
 
 if __name__ == "__main__":

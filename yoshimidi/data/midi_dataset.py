@@ -21,11 +21,11 @@ class MidiDataset(Dataset):
         all_end_indices = []
         all_memmaps = []
         memmap_cum_tokens = [0]
-        end_indices_paths = sorted(path.glob("end_indicies_*.npy"))
+        end_indices_paths = sorted(path.glob("end_indices_*.npy"))
         assert len(end_indices_paths) > 0, f"No end indices found in {path}"
         for end_indices_path in end_indices_paths:
             end_indices = np.fromfile(end_indices_path, dtype=np.int32).tolist()
-            index = end_indices_path.stem[len("end_indicies_") :]
+            index = end_indices_path.stem[len("end_indices_") :]
             memmap = np.memmap(
                 path / f"tokens_{index}.npy", dtype=token_parsing.DTYPE, mode="r"
             ).reshape((-1, token_parsing.TOKEN_DIM))

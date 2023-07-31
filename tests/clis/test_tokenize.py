@@ -40,7 +40,7 @@ def test_single_file():
         )
 
         end_indices = np.fromfile(
-            root / "output" / "end_indicies_0000.npy", dtype=np.uint32
+            root / "output" / "end_indices_0000.npy", dtype=np.uint32
         ).tolist()
         assert end_indices == [6 + 1, 6 + 1 + 4 + 1]
 
@@ -86,12 +86,12 @@ def test_multiple_files():
         assert {p.name for p in (root / "output").iterdir()} == {
             "tokens_0000.npy",
             "tokens_0001.npy",
-            "end_indicies_0000.npy",
-            "end_indicies_0001.npy",
+            "end_indices_0000.npy",
+            "end_indices_0001.npy",
         }
 
         end_indices = np.fromfile(
-            root / "output" / "end_indicies_0000.npy", dtype=np.int32
+            root / "output" / "end_indices_0000.npy", dtype=np.int32
         ).tolist()
         assert end_indices == [6 + 1]
 
@@ -102,7 +102,7 @@ def test_multiple_files():
         assert memmap[6 + 1 :, 0].tolist() == [0]
 
         end_indices = np.fromfile(
-            root / "output" / "end_indicies_0001.npy", dtype=np.int32
+            root / "output" / "end_indices_0001.npy", dtype=np.int32
         ).tolist()
         assert end_indices == [4 + 1]
 
