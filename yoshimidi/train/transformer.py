@@ -129,6 +129,7 @@ class _AttentionHead(torch.nn.Module):
                 (seq_len, seq_len),
                 fill_value=-1e6,
                 dtype=head_stream.dtype,
+                device=head_stream.device,
             ),
             diagonal=1,
         )
@@ -174,7 +175,8 @@ class _PositionalEncoding(torch.nn.Module):
             or self.encodings.dtype != x.dtype
         ):
             self.encodings = self._generate_encodings(x, seq_dim, x.dtype)
-        return x + self.encodings
+        # TODO: Am I handling the encodings var correctly?
+        return x + self.encodings.to(device=x.device)
 
     def _generate_encodings(
         self, x: torch.Tensor, seq_dim: int, dtype: torch.dtype

@@ -74,7 +74,7 @@ def main(config_path: str):
         dataset_train, batch_size=config.training.batch_size, shuffle=True
     )
     data_loader_eval = DataLoader(
-        dataset_eval, batch_size=config.training.batch_size, shuffle=True
+        dataset_eval, batch_size=config.eval.batch_size, shuffle=True
     )
     logger.debug(f"Num tokens: {len(dataset) * config.training.context_window:.2E}")
     logger.debug(f"Num rows: {len(dataset):.2E}")
@@ -83,6 +83,7 @@ def main(config_path: str):
 
     bar = tqdm.tqdm(data_loader_train, desc="Training")
     for step, batch in enumerate(bar):
+        model.train()
         optimizer.zero_grad()
         start_time = datetime.now()
         logits = model(batch)
@@ -128,12 +129,21 @@ def main(config_path: str):
             )
 
         if config.eval.schedule.should_run(step=step, max_steps=len(data_loader_train)):
-            evals.evaluate(
+            eval_loss = evals.evaluate(
                 tag=config.tag,
                 step=step,
                 model=model,
                 output_config=config.output,
                 data_loader_eval=data_loader_eval,
+            )
+            wandb.log(
+                {
+                    "evals/loss/loss": eval_loss.loss.item(),
+                    "evals/loss/kind": eval_loss.kind_loss.item(),
+                    "evals/loss/note_key": eval_loss.note_key_loss.item(),
+                    "evals/loss/note_octave": eval_loss.note_octave_loss.item(),
+                    "evals/loss/time": eval_loss.time_loss.item(),
+                }
             )
 
 
