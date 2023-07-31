@@ -136,15 +136,17 @@ def main(config_path: str):
                 output_config=config.output,
                 data_loader_eval=data_loader_eval,
             )
-            wandb.log(
-                {
-                    "evals/loss/loss": eval_loss.loss.item(),
-                    "evals/loss/kind": eval_loss.kind_loss.item(),
-                    "evals/loss/note_key": eval_loss.note_key_loss.item(),
-                    "evals/loss/note_octave": eval_loss.note_octave_loss.item(),
-                    "evals/loss/time": eval_loss.time_loss.item(),
-                }
-            )
+            bar.set_postfix(eval=eval_loss.loss.item())
+            if config.use_wandb:
+                wandb.log(
+                    {
+                        "evals/loss/loss": eval_loss.loss.item(),
+                        "evals/loss/kind": eval_loss.kind_loss.item(),
+                        "evals/loss/note_key": eval_loss.note_key_loss.item(),
+                        "evals/loss/note_octave": eval_loss.note_octave_loss.item(),
+                        "evals/loss/time": eval_loss.time_loss.item(),
+                    }
+                )
 
 
 if __name__ == "__main__":
