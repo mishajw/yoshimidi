@@ -37,7 +37,7 @@ def run_make(command: str) -> None:
 
 def _run_ssh(instance: "_Instance", commands: list[str]) -> None:
     os.execv(
-        "ssh",
+        "/usr/bin/ssh",
         [
             "ssh",
             f"root@{instance.ip}",

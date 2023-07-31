@@ -58,20 +58,26 @@ s3-upload:
 .PHONY: s3-download
 s3-download:
 	s5cmd sync \
-		's3://yoshimidi-v2/datasets/2023-07-31/' \
+		's3://yoshimidi-v2/datasets/2023-07-31/*' \
 		out/dataset/03_tokenized/
+
+.PHONY: s3-du
+s3-du:
+	@s5cmd ls \
+		's3://yoshimidi-v2/datasets/2023-07-31/' \
+		| awk '{sum += $$3} END{printf "%.3f GiB\n", sum / 1024 / 1024 / 1024}'
 
 # Vast.ai
 # =======
 
 .PHONY: vast-ssh
 vast-ssh:
-	poetry run python youshimidi/clis/vastai.py ssh
+	poetry run python yoshimidi/clis/vastai.py ssh
 
 .PHONY: vast-make
 vast-make: vast-rsync
-	poetry run python youshimidi/clis/vastai.py make $(CMD)
+	poetry run python yoshimidi/clis/vastai.py make $(CMD)
 
 .PHONY: vast-rsync
 vast-rsync:
-	poetry run python youshimidi/clis/vastai.py rsync
+	poetry run python yoshimidi/clis/vastai.py rsync

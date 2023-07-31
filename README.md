@@ -48,7 +48,7 @@ A language model with no control tokens that produces coherent-ish sounding musi
 ### Milestone 4: Polish
 
 ### Backlog
-- [ ] Categorical loss for time, a la MuZero.
+- [x] Categorical loss for time, a la MuZero.
 - [ ] Implement GPT-2/3/J architectures.
 - [ ] Implement better initialization schemes.
 - [ ] Better tokenization of dataset.
@@ -60,6 +60,4 @@ A language model with no control tokens that produces coherent-ish sounding musi
   - so 4 hours total ==> 4PM
 - let's try to train a good model this evening.
 - still needed:
-  - gpu support
-  - bf16?
   - evals?
