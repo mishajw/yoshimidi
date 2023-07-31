@@ -49,17 +49,27 @@ train:
 # S3
 # ==
 
-.PHONY: s3-upload
+.PHONY: s3-upload-dataset
 s3-upload:
 	s5cmd sync \
 		out/dataset/03_tokenized/ \
 		's3://yoshimidi-v2/datasets/2023-07-31/'
-
-.PHONY: s3-download
+.PHONY: s3-download-dataset
 s3-download:
 	s5cmd sync \
 		's3://yoshimidi-v2/datasets/2023-07-31/*' \
 		out/dataset/03_tokenized/
+
+.PHONY: s3-upload-checkpoints
+s3-upload-checkpoints:
+	s5cmd sync \
+		out/checkpoints/ \
+		's3://yoshimidi-v2/checkpoints/'
+.PHONY: s3-download-checkpoints
+s3-download-checkpoints:
+	s5cmd sync \
+		's3://yoshimidi-v2/checkpoints/*' \
+		out/checkpoints/
 
 .PHONY: s3-du
 s3-du:
@@ -75,7 +85,7 @@ vast-ssh:
 	poetry run python yoshimidi/clis/vastai.py ssh
 
 .PHONY: vast-make
-vast-make: vast-rsync
+vast-make:
 	poetry run python yoshimidi/clis/vastai.py make $(CMD)
 
 .PHONY: vast-rsync
