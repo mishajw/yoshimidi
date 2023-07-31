@@ -11,7 +11,11 @@ precommit:
 
 .PHONY: mypy
 mypy:
-	poetry run mypy ./yoshimidi ./tests
+	poetry run mypy .
+
+.PHONY: test
+test:
+	poetry run pytest
 
 .PHONY: du
 du:

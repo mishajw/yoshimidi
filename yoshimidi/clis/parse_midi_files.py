@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import dataclasses
 import multiprocessing
 import pathlib
 import shutil
@@ -25,7 +24,9 @@ def main():
     config = OutputConfig()
 
     logger.info("Starting")
-    logger.info("output_config: {}", dataclasses.asdict(config))
+    logger.info(
+        "output_config: {}", config.model_dump_json(indent=2, exclude_none=True)
+    )
     config.dataset_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Stage 1: Downloading data")

@@ -12,7 +12,6 @@ from jaxtyping import Float
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Track
-from yoshimidi.data.token_format import VOCAB
 from yoshimidi.output_config import OutputConfig
 
 
@@ -29,13 +28,13 @@ class _TokenizeState:
         self.memmap = np.memmap(
             self.output_dir / f"tokens_{self.index:04d}.npy",
             dtype=token_parsing.DTYPE,
-            shape=(self.lines_per_file, VOCAB),
+            shape=(self.lines_per_file, token_parsing.TOKEN_DIM),
             mode="w+",
         )
 
     def write_end_indicies(self) -> None:
         with (self.output_dir / f"end_indicies_{self.index:04d}.npy").open("wb") as f:
-            np.array(self.end_indices, dtype=np.int32).tofile(f)
+            np.array(self.end_indices, dtype=np.uint32).tofile(f)
 
     def get_slice(self, num_lines: int) -> np.ndarray:
         assert self.memmap is not None

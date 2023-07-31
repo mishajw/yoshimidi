@@ -3,12 +3,10 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from yoshimidi.data.parse import token_parsing
-from yoshimidi.data.token_format import VOCAB
+from yoshimidi.data.parse import one_hot_parsing, token_parsing
 
 
 @dataclass
@@ -30,8 +28,8 @@ class MidiDataset(Dataset):
             index = end_indices_path.stem[len("end_indicies_") :]
             memmap = np.memmap(
                 path / f"tokens_{index}.npy", dtype=token_parsing.DTYPE, mode="r"
-            ).reshape((-1, VOCAB))
-            assert memmap.shape == (2**22, VOCAB), memmap.shape
+            ).reshape((-1, token_parsing.TOKEN_DIM))
+            assert memmap.shape == (2**22, token_parsing.TOKEN_DIM), memmap.shape
             memmap = memmap[: end_indices[-1]]
             all_end_indices.append(end_indices)
             all_memmaps.append(memmap)
@@ -48,6 +46,9 @@ class MidiDataset(Dataset):
         return num_token // self.context_window
 
     def __getitem__(self, index: int) -> Tensor:
+        return one_hot_parsing.from_tokens(self._get_tokens(index))
+
+    def _get_tokens(self, index: int) -> np.ndarray:
         token_start = index * self.context_window
         token_end = (index + 1) * self.context_window
         first_bigger_tokens_idx = next(
@@ -62,5 +63,8 @@ class MidiDataset(Dataset):
         ]
         # TODO: Instead of padding, combine with next memmap.
         result = np.pad(result, [(0, self.context_window - result.shape[0]), (0, 0)])
-        assert result.shape == (self.context_window, VOCAB), result.shape
-        return torch.from_numpy(result)
+        assert result.shape == (
+            self.context_window,
+            token_parsing.TOKEN_DIM,
+        ), result.shape
+        return result

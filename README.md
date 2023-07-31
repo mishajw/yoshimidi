@@ -55,6 +55,6 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Better tokenization of dataset.
 
 ## Notes
-- ok, going to end up wanting to iterate quickly, esp. when messing with architectures. so for now, i'll set up a docker image + vast.ai + AWS S3.
-- dockerfile done (i hope...), waiting for it to build then will try to get something simple up on vast.ai
--
+- realised that we have *way* too inefficent storing of dataset: we store it one-hot!
+- let's fix that
+- while we're there, let's also change the format such that it's (on/off, key pressed, sleep after)

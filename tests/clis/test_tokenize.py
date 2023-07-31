@@ -4,8 +4,8 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from yoshimidi.clis.tokenize_midi_dataset import _tokenize
+from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note
-from yoshimidi.data.token_format import VOCAB
 
 
 def test_single_file():
@@ -40,37 +40,16 @@ def test_single_file():
         )
 
         end_indices = np.fromfile(
-            root / "output" / "end_indicies_0000.npy", dtype=np.int32
+            root / "output" / "end_indicies_0000.npy", dtype=np.uint32
         ).tolist()
-        assert end_indices == [6 * 2, 6 * 2 + 4 * 2]
+        assert end_indices == [6 + 1, 6 + 1 + 4 + 1]
 
         memmap = np.memmap(
-            root / "output" / "tokens_0000.npy", dtype=np.float32
-        ).reshape(-1, VOCAB)
-
-        assert memmap[0, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[1, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[2, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[3, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[4, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[5, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[6, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[7, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[8, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[9, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[10, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[11, 0:4].tolist() == [0, 0, 0, 1]  # end
-
-        assert memmap[12, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[13, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[14, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[15, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[16, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[17, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[18, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[19, 0:4].tolist() == [0, 0, 0, 1]  # end
-
-        assert np.all(memmap[20:] == 0)
+            root / "output" / "tokens_0000.npy", dtype=token_parsing.DTYPE
+        ).reshape(-1, token_parsing.TOKEN_DIM)
+        assert memmap[: 6 + 1, 0].tolist() == [0, 1, 0, 1, 0, 1, 2]
+        assert memmap[6 + 1 : 6 + 1 + 4 + 1, 0].tolist() == [0, 1, 0, 1, 2]
+        assert np.all(memmap[6 + 1 + 4 + 1 :, 0] == 0)
 
 
 def test_multiple_files():
@@ -101,7 +80,7 @@ def test_multiple_files():
                 ),
             ],
             output_dir=root / "output",
-            lines_per_file=13,
+            lines_per_file=8,
         )
 
         assert {p.name for p in (root / "output").iterdir()} == {
@@ -114,39 +93,21 @@ def test_multiple_files():
         end_indices = np.fromfile(
             root / "output" / "end_indicies_0000.npy", dtype=np.int32
         ).tolist()
-        assert end_indices == [6 * 2]
+        assert end_indices == [6 + 1]
 
         memmap = np.memmap(
-            root / "output" / "tokens_0000.npy", dtype=np.float32
-        ).reshape(-1, VOCAB)
-        assert memmap[0, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[1, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[2, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[3, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[4, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[5, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[6, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[7, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[8, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[9, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[10, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[11, 0:4].tolist() == [0, 0, 0, 1]  # end
+            root / "output" / "tokens_0000.npy", dtype=token_parsing.DTYPE
+        ).reshape(-1, token_parsing.TOKEN_DIM)
+        assert memmap[: 6 + 1, 0].tolist() == [0, 1, 0, 1, 0, 1, 2]
+        assert memmap[6 + 1 :, 0].tolist() == [0]
 
         end_indices = np.fromfile(
             root / "output" / "end_indicies_0001.npy", dtype=np.int32
         ).tolist()
-        assert end_indices == [4 * 2]
+        assert end_indices == [4 + 1]
 
         memmap = np.memmap(
-            root / "output" / "tokens_0001.npy", dtype=np.float32
-        ).reshape(-1, VOCAB)
-        assert memmap[0, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[1, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[2, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[3, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[4, 0:4].tolist() == [1, 0, 0, 0]  # on
-        assert memmap[5, 0:4].tolist() == [0, 0, 1, 0]  # pause
-        assert memmap[6, 0:4].tolist() == [0, 1, 0, 0]  # off
-        assert memmap[7, 0:4].tolist() == [0, 0, 0, 1]  # end
-
-        assert np.all(memmap[20:] == 0)
+            root / "output" / "tokens_0001.npy", dtype=token_parsing.DTYPE
+        ).reshape(-1, token_parsing.TOKEN_DIM)
+        assert memmap[: 4 + 1, 0].tolist() == [0, 1, 0, 1, 2]
+        assert memmap[4 + 1 :, 0].tolist() == [0, 0, 0]

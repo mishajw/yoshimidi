@@ -1,7 +1,7 @@
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.token_format import VOCAB
+from yoshimidi.data.parse.one_hot_parsing import VOCAB
 from yoshimidi.train.transformer_config import TransformerConfig
 
 

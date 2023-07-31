@@ -3,7 +3,8 @@ from dataclasses import dataclass
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.token_format import NUM_TIME_SUPPORTS, PIECE_LENGTHS
+from yoshimidi.data.parse.one_hot_parsing import PIECE_LENGTHS
+from yoshimidi.data.parse.time_parsing import NUM_TIME_SUPPORTS
 
 
 @dataclass

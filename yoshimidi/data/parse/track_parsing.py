@@ -8,7 +8,6 @@ from mido import Message, MidiTrack
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
-from yoshimidi.data.token_format import VOCAB
 
 DEFAULT_TICKS_PER_BEAT = 120
 DEFAULT_TEMPO = 447761
@@ -117,24 +116,16 @@ def _shift_time_deltas(notes: list[Note]) -> list[Note]:
 def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
     channels = []
     for channel in channel_tokens:
-        assert channel.shape[1] == VOCAB
-        notes = []
+        assert channel.shape[1] == token_parsing.TOKEN_DIM
+        notes: list[Note] = []
 
-        idx = 0
-        while idx < channel.shape[0]:
-            kind = token_parsing.get_kind(channel[idx])
+        for index in range(channel.shape[0]):
+            kind = token_parsing.get_kind(channel[index])
             if kind == "end":
-                assert idx == channel.shape[0] - 1
+                assert index == channel.shape[0] - 1
                 break
-            assert kind == "pause", kind
-            time_secs = token_parsing.get_time_secs(channel[idx])
-            idx += 1
-
-            kind = token_parsing.get_kind(channel[idx])
-            assert kind == "on" or kind == "off", kind
-            note = token_parsing.get_note(channel[idx])
-            idx += 1
-
+            note = token_parsing.get_note(channel[index])
+            time_secs = token_parsing.get_time_secs(channel[index])
             notes.append(
                 Note(
                     note=note,

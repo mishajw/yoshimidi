@@ -1,18 +1,27 @@
+from typing import Literal, TypeAlias
+
 import numpy as np
-import torch
-from jaxtyping import Float
+from jaxtyping import UInt8
 
-from yoshimidi.data import token_format
+from yoshimidi.data.parse import time_parsing
 from yoshimidi.data.parse.tracks import Channel
-from yoshimidi.data.token_format import PIECE_LENGTHS, VOCAB, KindType
 
-DTYPE = np.float16
+KindType: TypeAlias = Literal["on", "off", "end"]
+KINDS: list[KindType] = ["on", "off", "end"]
+
+TokenFields: TypeAlias = Literal["kind", "note", "time"]
+_TOKEN_FIELDS: list[TokenFields] = ["kind", "note", "time"]
+
+TOKEN_DIM = len(_TOKEN_FIELDS)
+DTYPE = np.uint8
 
 # jaxtyping
-seq, vocab = None, None
+seq, token = None, None
 
 
-def from_channel(channel: Channel, include_end: bool = True) -> np.ndarray:
+def from_channel(
+    channel: Channel, include_end: bool = True
+) -> UInt8[np.ndarray, "seq token"]:  # noqa: F722
     buffer = np.zeros(get_buffer_size(channel), dtype=DTYPE)
     from_channel_to_buffer(channel, buffer)
     if not include_end:
@@ -22,98 +31,93 @@ def from_channel(channel: Channel, include_end: bool = True) -> np.ndarray:
 
 def from_channel_to_buffer(
     channel: Channel,
-    output: Float[np.ndarray, "seq vocab"],  # noqa: F722
+    output: UInt8[np.ndarray, "seq token"],  # noqa: F722
 ):
-    index = 0
-    for note_index in range(len(channel.notes)):
-        note = channel.notes[note_index]
-        _create_token(output[index], kind="pause", time=note.time_delta_secs)
-        index += 1
-        _create_token(output[index], kind=note.kind, note=note.note)
-        index += 1
-    _create_token(output[index], kind="end")
-    index += 1
-    assert index == output.shape[0]
+    for index, note in enumerate(channel.notes):
+        _create_token_in_buffer(
+            output[index],
+            kind=note.kind,
+            note=note.note,
+            time_delta_secs=note.time_delta_secs,
+        )
+    _create_token_in_buffer(output[-1], kind="end", note=0, time_delta_secs=0)
 
 
-def create_torch_token(
-    kind: KindType,
-    *,
-    note: int | None = None,
-    time: float | None = None,
-) -> torch.Tensor:
-    result = np.zeros(VOCAB)
-    _create_token(result, kind, note=note, time=time)
-    return torch.Tensor(result)
+# def create_torch_token(
+#     kind: KindType,
+#     *,
+#     note: int,
+#     time: float,
+# ) -> torch.Tensor:
+#     result = np.zeros(TOKEN_DIM)
+#     _create_token(result, kind, note=note, time_delta_secs=time)
+#     return torch.Tensor(result)
 
 
 def get_buffer_size(channel: Channel):
-    return (len(channel.notes) * 2 + 1, VOCAB)
+    return (len(channel.notes) + 1, len(_TOKEN_FIELDS))
 
 
-def get_kind(token: Float[np.ndarray, "vocab"]) -> KindType:
-    if token[0] == 1:
+def get_kind(token: UInt8[np.ndarray, "token"]) -> KindType:
+    index = _TOKEN_FIELDS.index("kind")
+    if token[index] == 0:
         return "on"
-    elif token[1] == 1:
+    elif token[index] == 1:
         return "off"
-    elif token[2] == 1:
-        return "pause"
-    elif token[3] == 1:
+    elif token[index] == 2:
         return "end"
     else:
         raise ValueError(token)
 
 
-def get_note(token: Float[np.ndarray, "vocab"]) -> int:
+def get_note(token: UInt8[np.ndarray, "token"]) -> int:
+    index = _TOKEN_FIELDS.index("note")
     assert get_kind(token) in ["on", "off"]
-    return np.argmax(token[4:16]).item() + 12 * np.argmax(token[16:27]).item()
+    return token[index]
 
 
-def get_time_secs(token: Float[np.ndarray, "vocab"]) -> float:
-    assert get_kind(token) == "pause"
-    start, end = token_format.piece_range("time")
-    return token_format.support_to_time(token[start:end])
+def get_time_secs(token: UInt8[np.ndarray, "token"]) -> float:
+    index = _TOKEN_FIELDS.index("time")
+    assert get_kind(token) in ["on", "off"]
+    return time_parsing.time_from_uint8(token[index])
 
 
-def _create_token(
-    mmap: Float[np.ndarray, "vocab"],
+def create_token(
     kind: KindType,
     *,
-    note: int | None = None,
-    time: float | None = None,
+    note: int,
+    time_delta_secs: float,
+) -> UInt8[np.ndarray, "token"]:
+    buffer = np.zeros(TOKEN_DIM)
+    _create_token_in_buffer(buffer, kind, note=note, time_delta_secs=time_delta_secs)
+    return buffer
+
+
+def _create_token_in_buffer(
+    mmap: UInt8[np.ndarray, "token"],
+    kind: KindType,
+    *,
+    note: int,
+    time_delta_secs: float,
 ) -> None:
     index = 0
 
-    for piece, piece_length in PIECE_LENGTHS.items():
-        if piece == "kind":
-            assert piece_length == 4
-            if kind == "on":
-                mmap[index] = 1
-            elif kind == "off":
-                mmap[index + 1] = 1
-            elif kind == "pause":
-                mmap[index + 2] = 1
-            elif kind == "end":
-                mmap[index + 3] = 1
+    if kind == "on":
+        mmap[index] = 0
+    elif kind == "off":
+        mmap[index] = 1
+    elif kind == "end":
+        mmap[index] = 2
+    else:
+        raise ValueError(kind)
+    index += 1
 
-        elif piece == "note_key":
-            assert piece_length == 12
-            if note is not None:
-                assert 0 <= note < 128, note
-                mmap[index + note % 12] = 1
+    assert 0 <= note < 2**32, note
+    mmap[index] = note
+    index += 1
 
-        elif piece == "note_octave":
-            assert piece_length == 11
-            if note is not None:
-                mmap[index + note // 12] = 1
-
-        elif piece == "time":
-            if time is not None:
-                token_format.time_to_support(time, mmap[index : index + piece_length])
-
-        else:
-            raise ValueError(piece)
-
-        index += piece_length
+    assert 0 <= time_delta_secs < 2**32, time_delta_secs
+    mmap[index] = time_parsing.time_to_uint8(time_delta_secs)
+    index += 1
 
     assert index == mmap.shape[0], (index, mmap.shape[0])

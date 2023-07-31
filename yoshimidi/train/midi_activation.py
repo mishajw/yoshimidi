@@ -2,7 +2,7 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 
-from yoshimidi.data.token_format import PIECE_LENGTHS
+from yoshimidi.data.parse.one_hot_parsing import PIECE_LENGTHS
 
 
 def midi_activation(
