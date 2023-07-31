@@ -47,7 +47,12 @@ def main(config_path: str):
     if config.use_wandb:
         logger.info("Setting up WandB")
         wandb.login()
-        wandb.init(project="yoshimidi", name=config.tag, dir=".wandb")
+        wandb.init(
+            project="yoshimidi",
+            name=config.tag,
+            dir=".wandb",
+            config=config.model_dump(),
+        )
 
     logger.debug("Loading model")
     model = Transformer(config.transformer).to(
