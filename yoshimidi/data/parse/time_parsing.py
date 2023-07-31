@@ -48,6 +48,9 @@ def time_uint8_to_support(time: int, output: torch.Tensor) -> None:
     output[upper_idx] = weighting
 
 
-def time_uint8_from_support(support: np.ndarray) -> int:
+def time_uint8_from_support(support: torch.Tensor) -> int:
     assert support.shape == (len(_TIME_SUPPORTS),)
-    return np.dot(support, _TIME_SUPPORTS)
+    return torch.dot(
+        support,
+        torch.tensor(_TIME_SUPPORTS, dtype=support.dtype, device=support.device),
+    )

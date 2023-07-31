@@ -37,7 +37,7 @@ def run_inference(
             break
 
         lower, upper = one_hot_parsing.piece_range("time")
-        time_support = activations[lower:upper].numpy()
+        time_support = activations[lower:upper]
         time_uint8 = time_parsing.time_uint8_from_support(time_support)
         time_delta_secs = time_parsing.time_from_uint8(time_uint8)
 
