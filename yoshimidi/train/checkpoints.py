@@ -5,20 +5,12 @@ from loguru import logger
 from pydantic import BaseModel
 
 from yoshimidi.output_config import OutputConfig
+from yoshimidi.train.step_schedule import StepSchedule
 from yoshimidi.train.transformer import Transformer
 
 
 class CheckpointConfig(BaseModel, extra="forbid"):
-    every_n_steps: int
-    at_begin: bool = True
-    at_end: bool = True
-
-    def should_save(self, step: int, max_steps: int) -> bool:
-        if self.at_begin and step == 0:
-            return True
-        if self.at_end and step == (max_steps - 1):
-            return True
-        return step > 0 and step % self.every_n_steps == 0
+    schedule: StepSchedule
 
 
 def save_checkpoint(

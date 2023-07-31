@@ -12,8 +12,9 @@ from torch.utils.data import DataLoader
 
 from yoshimidi.data.midi_dataset import MidiDataset
 from yoshimidi.output_config import OutputConfig
-from yoshimidi.train import checkpoints
+from yoshimidi.train import checkpoints, evals
 from yoshimidi.train.checkpoints import CheckpointConfig
+from yoshimidi.train.evals import EvalConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.training_config import TrainingConfig
@@ -29,6 +30,7 @@ class Config(BaseModel, extra="forbid"):
     transformer: TransformerConfig
     training: TrainingConfig
     checkpoint: CheckpointConfig
+    eval: EvalConfig
     use_wandb: bool = True
 
 
@@ -63,14 +65,23 @@ def main(config_path: str):
         device=config.training.torch_device(),
         dtype=config.training.torch_dtype(),
     )
-    data_loader = DataLoader(
-        dataset, batch_size=config.training.batch_size, shuffle=True
+    # TODO: We shouldn't split on the batch-level, as the same song could be split
+    # between eval and train. Instead, we should split while parsing.
+    dataset_eval, dataset_train = torch.utils.data.random_split(
+        dataset, [config.eval.split, 1 - config.eval.split]
+    )
+    data_loader_train = DataLoader(
+        dataset_train, batch_size=config.training.batch_size, shuffle=True
+    )
+    data_loader_eval = DataLoader(
+        dataset_eval, batch_size=config.training.batch_size, shuffle=True
     )
     logger.debug(f"Num tokens: {len(dataset) * config.training.context_window:.2E}")
     logger.debug(f"Num rows: {len(dataset):.2E}")
-    logger.debug(f"Num batches: {len(data_loader):.2E}")
+    logger.debug(f"Num batches: {len(data_loader_train):.2E}")
+    logger.debug(f"Num batches (eval): {len(data_loader_eval):.2E}")
 
-    bar = tqdm.tqdm(data_loader, desc="Training")
+    bar = tqdm.tqdm(data_loader_train, desc="Training")
     for step, batch in enumerate(bar):
         optimizer.zero_grad()
         start_time = datetime.now()
@@ -105,13 +116,24 @@ def main(config_path: str):
         if config.use_wandb:
             wandb.log(metrics)
 
-        if config.checkpoint.should_save(step=step, max_steps=len(data_loader)):
+        if config.checkpoint.schedule.should_run(
+            step=step, max_steps=len(data_loader_train)
+        ):
             checkpoints.save_checkpoint(
                 tag=config.tag,
                 step=step,
                 model=model,
                 optimizer=optimizer,
                 output_config=config.output,
+            )
+
+        if config.eval.schedule.should_run(step=step, max_steps=len(data_loader_train)):
+            evals.evaluate(
+                tag=config.tag,
+                step=step,
+                model=model,
+                output_config=config.output,
+                data_loader_eval=data_loader_eval,
             )
 
 

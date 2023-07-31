@@ -31,14 +31,14 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [x] Basic training loop.
 - [x] Inference loop.
 - [ ] Evals:
-  - [ ] Eval schedules.
+  - [x] Eval schedules.
   - [ ] Train/eval split.
   - [ ] Save MIDI files at each eval step.
 - [x] Checkpointing.
 - [ ] Train a good model.
-  - [ ] Figure out why making it larger makes performance worse.
   - [x] Set up Docker image for training.
   - [x] Figure out vast.ai for training.
+  - [ ] Figure out why making it larger makes performance worse.
   - [ ] Do a big training run!
 
 ### Milestone 2: Control tokens
