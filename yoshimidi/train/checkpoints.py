@@ -39,13 +39,14 @@ def load_checkpoint(
     model: Transformer,
     optimizer: torch.optim.Optimizer,
     output_config: OutputConfig,
+    device: torch.device,
 ):
     if step == "latest":
         checkpoint_path = output_config.get_latest_checkpoint(tag=tag)
     else:
         checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
     logger.info("Loading checkpoint: {}", checkpoint_path)
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     return model, optimizer
