@@ -9,6 +9,8 @@ num_attention_heads = 4
 [training]
 context_window = 1024
 batch_size = 32
+device = "cpu"
+dtype = "float32"
 
 [checkpoint]
 every_n_steps = 100

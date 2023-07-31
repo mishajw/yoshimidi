@@ -36,7 +36,8 @@ class Transformer(torch.nn.Module):
         super().__init__()
         self.config = config
         self.token_embeddings = torch.nn.Parameter(
-            torch.randn((VOCAB, config.residual_stream_size)), requires_grad=True
+            torch.randn((VOCAB, config.residual_stream_size)),
+            requires_grad=True,
         )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
         self.positional_encoding = _PositionalEncoding(config.residual_stream_size)

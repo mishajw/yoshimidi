@@ -22,9 +22,11 @@ seq, token, vocab = None, None, None
 
 def from_tokens(
     input: UInt8[np.ndarray, "seq token"],  # noqa: F722
+    device: torch.device,
+    dtype: torch.dtype,
 ) -> Float[torch.Tensor, "seq vocab"]:  # noqa: F722
-    input_tensor = torch.tensor(input, dtype=torch.int64)
-    output = torch.zeros((input.shape[0], VOCAB))
+    input_tensor = torch.tensor(input, device=device, dtype=torch.int64)
+    output = torch.zeros((input.shape[0], VOCAB), device=device, dtype=dtype)
     index = 0
     for piece, piece_length in PIECE_LENGTHS.items():
         if piece == "kind":

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
+import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -12,12 +13,20 @@ from yoshimidi.data.parse import one_hot_parsing, token_parsing
 @dataclass
 class MidiDataset(Dataset):
     context_window: int
+    device: torch.device
+    dtype: torch.dtype
     end_indices: List[List[int]]
     memmap: List[np.ndarray]
     memmap_cum_tokens: List[int]
 
     @classmethod
-    def from_path(cls, path: pathlib.Path, context_window: int) -> "MidiDataset":
+    def from_path(
+        cls,
+        path: pathlib.Path,
+        context_window: int,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> "MidiDataset":
         all_end_indices = []
         all_memmaps = []
         memmap_cum_tokens = [0]
@@ -36,6 +45,8 @@ class MidiDataset(Dataset):
             memmap_cum_tokens.append(end_indices[-1] + memmap_cum_tokens[-1])
         return MidiDataset(
             context_window=context_window,
+            device=device,
+            dtype=dtype,
             end_indices=all_end_indices,
             memmap=all_memmaps,
             memmap_cum_tokens=memmap_cum_tokens,
@@ -46,7 +57,9 @@ class MidiDataset(Dataset):
         return num_token // self.context_window
 
     def __getitem__(self, index: int) -> Tensor:
-        return one_hot_parsing.from_tokens(self._get_tokens(index))
+        return one_hot_parsing.from_tokens(
+            self._get_tokens(index), self.device, self.dtype
+        )
 
     def _get_tokens(self, index: int) -> np.ndarray:
         token_start = index * self.context_window

@@ -48,7 +48,9 @@ def main(config_path: str):
         wandb.init(project="yoshimidi", name=config.tag, dir=".wandb")
 
     logger.debug("Loading model")
-    model = Transformer(config.transformer)
+    model = Transformer(config.transformer).to(
+        device=config.training.torch_device(), dtype=config.training.torch_dtype()
+    )
     optimizer = torch.optim.Adam(model.parameters())
     logger.debug(
         f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
@@ -56,7 +58,10 @@ def main(config_path: str):
 
     logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
-        config.output.dataset_tokenized, context_window=config.training.context_window
+        config.output.dataset_tokenized,
+        context_window=config.training.context_window,
+        device=config.training.torch_device(),
+        dtype=config.training.torch_dtype(),
     )
     data_loader = DataLoader(
         dataset, batch_size=config.training.batch_size, shuffle=True
@@ -69,7 +74,7 @@ def main(config_path: str):
     for step, batch in enumerate(bar):
         optimizer.zero_grad()
         start_time = datetime.now()
-        logits = model(batch.float())
+        logits = model(batch)
         loss_values = autoregressive_midi_loss(batch=batch, logits=logits)
         loss_values.loss.backward()
         optimizer.step()

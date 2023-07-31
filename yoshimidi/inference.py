@@ -15,11 +15,13 @@ from yoshimidi.train.transformer import Transformer
 def run_inference(
     model: Transformer,
     prompt: Channel,
+    device: torch.device,
+    dtype: torch.dtype,
     max_new_tokens: int,
     temperature: float = 1,
 ) -> Generator[Note, None, None]:
     tokens = one_hot_parsing.from_tokens(
-        token_parsing.from_channel(prompt, include_end=False)
+        token_parsing.from_channel(prompt, include_end=False), device, dtype
     )
     prompt_length = tokens.size(0)
     for _ in tqdm.tqdm(itertools.count(), desc="Generating tokens"):
@@ -60,7 +62,9 @@ def run_inference(
                     time_delta_secs=time_delta_secs,
                 ),
                 axis=0,
-            )
+            ),
+            device,
+            dtype,
         )
         tokens = torch.cat([tokens, next_token], dim=0)
 

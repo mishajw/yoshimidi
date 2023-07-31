@@ -1,6 +1,32 @@
-from pydantic import BaseModel
+import torch
+from pydantic import BaseModel, validator
 
 
-class TrainingConfig(BaseModel, extra="forbid"):
+class TrainingConfig(BaseModel, extra="forbid", arbitrary_types_allowed=True):
     context_window: int
     batch_size: int
+    device: str
+    dtype: str
+
+    def torch_device(self) -> torch.device:
+        return torch.device(self.device)
+
+    def torch_dtype(self) -> torch.dtype:
+        if self.dtype == "float32":
+            return torch.float32
+        elif self.dtype == "float16":
+            return torch.float16
+        elif self.dtype == "bfloat16":
+            return torch.bfloat16
+        else:
+            raise ValueError(self.dtype)
+
+    @validator("device", pre=True)
+    def _check_device(cls, v: str) -> str:
+        torch.device(v)
+        return v
+
+    @validator("dtype", pre=True)
+    def _check_dtype(cls, v: str) -> str:
+        assert v in {"float32", "float16", "bfloat16"}, v
+        return v
