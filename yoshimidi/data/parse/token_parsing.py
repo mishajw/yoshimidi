@@ -105,7 +105,6 @@ def _create_token_in_buffer(
     mmap[index] = note
     index += 1
 
-    assert 0 <= time_delta_secs < 2**32, time_delta_secs
     mmap[index] = time_parsing.time_to_uint8(time_delta_secs)
     index += 1
 

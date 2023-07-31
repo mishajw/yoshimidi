@@ -11,7 +11,7 @@ _TIME_LOG_MAX = 5.758507374345448
 
 
 def time_to_uint8(time: float) -> int:
-    if time == 0:
+    if time <= 0:
         return 0
     time_log = math.log(time)
     time_norm = (time_log - _TIME_LOG_MIN) / (_TIME_LOG_MAX - _TIME_LOG_MIN)
