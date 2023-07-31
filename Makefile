@@ -1,3 +1,8 @@
+#!make
+
+include .env
+export
+
 # Development
 # ===========
 
@@ -44,11 +49,17 @@ train:
 # S3
 # ==
 
+.PHONY: s3-upload
+s3-upload:
+	s5cmd sync \
+		out/dataset/03_tokenized/ \
+		's3://yoshimidi-v2/datasets/2023-07-31/'
+
 .PHONY: s3-download
 s3-download:
-	env \
-		$$(cat .env | xargs) \
-		s5cmd sync 's3://yoshimidi/datasets/2023-07-29/*_0000.npy' out/dataset_tokenized
+	s5cmd sync \
+		's3://yoshimidi-v2/datasets/2023-07-31/' \
+		out/dataset/03_tokenized/
 
 # Vast.ai
 # =======
