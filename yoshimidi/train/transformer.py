@@ -120,7 +120,11 @@ class _MultiHeadAttention(torch.nn.Module):
             is_causal=True,
         )
         # shape=(batch, seq, resid)
-        result = result.transpose(1, 2).view(batch, seq, self.residual_stream_size)
+        result = (
+            result.transpose(1, 2)
+            .contiguous()
+            .view(batch, seq, self.residual_stream_size)
+        )
         return self.output_layer(result)
 
 
