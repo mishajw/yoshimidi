@@ -50,12 +50,12 @@ train:
 # ==
 
 .PHONY: s3-upload-dataset
-s3-upload:
+s3-upload-dataset:
 	s5cmd sync \
 		out/dataset/03_tokenized/ \
 		's3://yoshimidi-v2/datasets/2023-07-31/'
 .PHONY: s3-download-dataset
-s3-download:
+s3-download-dataset:
 	s5cmd sync \
 		's3://yoshimidi-v2/datasets/2023-07-31/*' \
 		out/dataset/03_tokenized/
