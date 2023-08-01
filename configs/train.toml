@@ -1,16 +1,24 @@
-tag = "2023-07-17_v1_support"
+tag = "2023-08-01_v2_moresups_untiedembs"
 use_wandb = true
 
 [transformer]
-num_layers = 3
-residual_stream_size = 128
-num_attention_heads = 4
+num_layers = 6
+residual_stream_size = 512
+num_attention_heads = 8
+context_window = 1024
 
 [training]
-context_window = 1024
 batch_size = 32
-device = "cpu"
+learning_rate = 1e-4
+device = "cuda"
 dtype = "float32"
 
-[checkpoint]
-every_n_steps = 100
+[checkpoint.schedule]
+every_n_steps = 500
+
+[eval]
+split = 0.001
+batch_size = 32
+
+[eval.schedule]
+every_n_steps = 500
