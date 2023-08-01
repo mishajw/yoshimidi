@@ -39,6 +39,10 @@ class Transformer(torch.nn.Module):
             torch.randn((VOCAB, config.residual_stream_size)),
             requires_grad=True,
         )
+        self.token_unembeddings = torch.nn.Parameter(
+            torch.randn((config.residual_stream_size, VOCAB)),
+            requires_grad=True,
+        )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
         self.positional_encoding = _PositionalEncoding(
             config.residual_stream_size, config.context_window
@@ -50,13 +54,11 @@ class Transformer(torch.nn.Module):
         self,
         tokens: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq vocab"]:  # noqa: F722
-        residual_stream = tokens @ (
-            self.token_embeddings * self.config.residual_stream_size**0.5
-        )
+        residual_stream = tokens @ self.token_embeddings
         residual_stream = self.positional_encoding(residual_stream)
         for block in self.blocks:
             residual_stream = block(residual_stream)
-        return residual_stream @ self.token_embeddings.T
+        return residual_stream @ self.token_unembeddings
 
 
 class _TransformerBlock(torch.nn.Module):
