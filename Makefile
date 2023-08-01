@@ -73,9 +73,8 @@ s3-download-checkpoints:
 
 .PHONY: s3-du
 s3-du:
-	@s5cmd ls \
-		's3://yoshimidi-v2/datasets/2023-07-31/' \
-		| awk '{sum += $$3} END{printf "%.3f GiB\n", sum / 1024 / 1024 / 1024}'
+	@s5cmd du --humanize \
+		's3://yoshimidi-v2/*'
 
 # Vast.ai
 # =======
