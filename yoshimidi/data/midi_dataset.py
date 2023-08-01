@@ -27,6 +27,7 @@ class MidiDataset(Dataset):
         device: torch.device,
         dtype: torch.dtype,
     ) -> "MidiDataset":
+        assert path.is_dir(), f"Dataset path is not a directory: {path}"
         all_end_indices = []
         all_memmaps = []
         memmap_cum_tokens = [0]
