@@ -40,7 +40,9 @@ class Transformer(torch.nn.Module):
             requires_grad=True,
         )
         self.blocks = [_TransformerBlock(config) for _ in range(config.num_layers)]
-        self.positional_encoding = _PositionalEncoding(config.residual_stream_size)
+        self.positional_encoding = _PositionalEncoding(
+            config.residual_stream_size, config.context_window
+        )
         for i, block in enumerate(self.blocks):
             self.add_module(f"block_{i}", block)
 
@@ -145,10 +147,11 @@ class _Mlp(torch.nn.Module):
 
 
 class _PositionalEncoding(torch.nn.Module):
-    def __init__(self, residual_stream_size: int):
+    def __init__(self, residual_stream_size: int, context_window: int):
         super().__init__()
         self.encodings: torch.Tensor | None = None
         self.residual_stream_size = residual_stream_size
+        self.context_window = context_window
 
     def forward(self, x: torch.Tensor, seq_dim: int = -2) -> torch.Tensor:
         if (
@@ -166,7 +169,7 @@ class _PositionalEncoding(torch.nn.Module):
         result = torch.tensor(
             [
                 [
-                    pos / 10000 ** (2 * i / x.shape[seq_dim])
+                    pos / 10000 ** (2 * i / self.context_window)
                     for i in range(self.residual_stream_size)
                 ]
                 for pos in range(x.shape[seq_dim])

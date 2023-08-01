@@ -3,7 +3,6 @@ from pydantic import BaseModel, validator
 
 
 class TrainingConfig(BaseModel, extra="forbid", arbitrary_types_allowed=True):
-    context_window: int
     batch_size: int
     learning_rate: float
     device: str

@@ -10,19 +10,18 @@ def calculate_flops(
     """
     Approximates the number of floating point operations achieved per-second.
     """
-    num_flop = calculate_num_flop(transformer_config, training_config)
+    num_flop = calculate_num_flop(transformer_config)
     return (
         num_flop
         * 2
         * training_config.batch_size
-        * training_config.context_window
+        * transformer_config.context_window
         / time_per_batch_secs
     )
 
 
 def calculate_num_flop(
     transformer_config: TransformerConfig,
-    training_config: TrainingConfig,
 ) -> int:
     """
     Approximates the number of floating point operations performed to process a single
@@ -35,7 +34,7 @@ def calculate_num_flop(
         2 * calculate_num_parameters(transformer_config)
         + 2
         * transformer_config.num_layers
-        * training_config.context_window
+        * transformer_config.context_window
         * transformer_config.attention_head_size
     )
 

@@ -66,7 +66,7 @@ def main(config_path: str):
     logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
         config.output.dataset_tokenized,
-        context_window=config.training.context_window,
+        context_window=config.transformer.context_window,
         device=config.training.torch_device(),
         dtype=config.training.torch_dtype(),
     )
@@ -81,7 +81,7 @@ def main(config_path: str):
     data_loader_eval = DataLoader(
         dataset_eval, batch_size=config.eval.batch_size, shuffle=True
     )
-    logger.debug(f"Num tokens: {len(dataset) * config.training.context_window:.2E}")
+    logger.debug(f"Num tokens: {len(dataset) * config.transformer.context_window:.2E}")
     logger.debug(f"Num rows: {len(dataset):.2E}")
     logger.debug(f"Num batches: {len(data_loader_train):.2E}")
     logger.debug(f"Num batches (eval): {len(data_loader_eval):.2E}")
