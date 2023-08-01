@@ -18,7 +18,7 @@ def time_to_uint8(time: float) -> int:
     return int(time_norm * 2**8)
 
 
-def time_from_uint8(time_uint8: int) -> float:
+def time_from_uint8(time_uint8: int | float) -> float:
     if time_uint8 == 0:
         return 0.0
     time_norm = float(time_uint8) / 2**8
@@ -48,9 +48,9 @@ def time_uint8_to_support(time: int, output: torch.Tensor) -> None:
     output[upper_idx] = weighting
 
 
-def time_uint8_from_support(support: torch.Tensor) -> int:
-    assert support.shape == (len(_TIME_SUPPORTS),)
+def time_uint8_from_support(support: torch.Tensor) -> float:
+    assert support.shape == (len(_TIME_SUPPORTS),), support.shape
     return torch.dot(
         support,
         torch.tensor(_TIME_SUPPORTS, dtype=support.dtype, device=support.device),
-    )
+    ).item()
