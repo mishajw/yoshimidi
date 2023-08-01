@@ -4,8 +4,8 @@ import numpy as np
 import torch
 
 # See notebooks/time_distribution.ipynb for the derivation of these values.
-_TIME_SUPPORTS = [*np.arange(0, 162 + 1, 162 / 6), 255.0]
-NUM_TIME_SUPPORTS = len(_TIME_SUPPORTS)  # 8
+_TIME_SUPPORTS = [*np.arange(0, 162 + 1, 162 / 14), 255.0]
+NUM_TIME_SUPPORTS = len(_TIME_SUPPORTS)  # 16
 _TIME_LOG_MIN = -7.6246189861593985
 _TIME_LOG_MAX = 5.758507374345448
 
