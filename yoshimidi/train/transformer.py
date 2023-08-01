@@ -81,63 +81,45 @@ class _TransformerBlock(torch.nn.Module):
 class _MultiHeadAttention(torch.nn.Module):
     def __init__(self, config: TransformerConfig):
         super().__init__()
-        self.attention_heads = [
-            _AttentionHead(config) for _ in range(config.num_attention_heads)
-        ]
-        for i, attention_head in enumerate(self.attention_heads):
-            self.add_module(f"attention_head_{i}", attention_head)
+        self.qkv_projection = torch.nn.Linear(
+            in_features=config.residual_stream_size,
+            out_features=config.residual_stream_size * 3,
+        )
         self.output_layer = torch.nn.Linear(
             in_features=config.residual_stream_size,
             out_features=config.residual_stream_size,
         )
+        self.residual_stream_size = config.residual_stream_size
+        self.attention_head_size = config.attention_head_size
+        self.num_attention_heads = config.num_attention_heads
 
     def forward(
         self,
         residual_stream: Float[torch.Tensor, "batch seq resid"],  # noqa: F722
     ) -> Float[torch.Tensor, "batch seq resid"]:  # noqa: F722
-        outputs = torch.concat(
-            [
-                attention_head(residual_stream)
-                for attention_head in self.attention_heads
-            ],
-            dim=2,
+        batch, seq, _ = residual_stream.shape
+        # shape=(batch, seq, resid * 3)
+        qkv = self.qkv_projection(residual_stream)
+        # shape=(batch, seq, resid)
+        q, k, v = qkv.split(self.residual_stream_size, dim=2)
+        # We want the last two dimensions to be sequence length & embedding size, as
+        # this is what scaled_dot_product_attention expects. So we translate to:
+        # shape=(batch, attn_head, seq, attn_head_size)
+        q = q.view(batch, seq, self.num_attention_heads, self.attention_head_size)
+        q = q.transpose(1, 2)
+        k = k.view(batch, seq, self.num_attention_heads, self.attention_head_size)
+        k = k.transpose(1, 2)
+        v = v.view(batch, seq, self.num_attention_heads, self.attention_head_size)
+        v = v.transpose(1, 2)
+        result = torch.nn.functional.scaled_dot_product_attention(
+            query=q,
+            key=k,
+            value=v,
+            is_causal=True,
         )
-        return self.output_layer(outputs)
-
-
-class _AttentionHead(torch.nn.Module):
-    def __init__(self, config: TransformerConfig):
-        super().__init__()
-        self.attention_head_size = config.attention_head_size
-        self.qkv_layer = torch.nn.Linear(
-            in_features=config.residual_stream_size,
-            out_features=(self.attention_head_size * 3),
-        )
-
-    def forward(
-        self,
-        head_stream: Float[torch.Tensor, "batch seq head"],  # noqa: F722
-    ) -> Float[torch.Tensor, "batch seq head"]:  # noqa: F722
-        _, seq_len, _ = head_stream.shape
-        qkv = self.qkv_layer(head_stream)
-        queries = qkv[:, :, 0 : self.attention_head_size]
-        keys = qkv[:, :, self.attention_head_size : self.attention_head_size * 2]  # ()
-        values = qkv[:, :, self.attention_head_size * 2 :]
-        attention_logits = queries @ keys.transpose(2, 1)
-        attention_mask = torch.triu(
-            torch.full(
-                (seq_len, seq_len),
-                fill_value=-1e6,
-                dtype=head_stream.dtype,
-                device=head_stream.device,
-            ),
-            diagonal=1,
-        )
-        attention = torch.nn.functional.softmax(
-            (attention_logits * attention_mask) / (self.attention_head_size**0.5),
-            dim=2,
-        )
-        return attention @ values
+        # shape=(batch, seq, resid)
+        result = result.transpose(1, 2).view(batch, seq, self.residual_stream_size)
+        return self.output_layer(result)
 
 
 class _Mlp(torch.nn.Module):
