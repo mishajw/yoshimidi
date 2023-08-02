@@ -28,9 +28,9 @@ def play_channel(channel: Channel) -> None:
         play(Path(temp_file.name))
 
 
-def _play_music(midi_filename):
+def _play_music(midi_file: Path) -> None:
     clock = pygame.time.Clock()
-    pygame.mixer.music.load(midi_filename)
+    pygame.mixer.music.load(midi_file)
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():
         clock.tick(30)  # check if playback has finished
