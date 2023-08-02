@@ -16,6 +16,7 @@ DEFAULT_TEMPO = 447761
 def from_midi(
     midi_track: MidiTrack,
     *,
+    tempo: int,
     ticks_per_beat: float,
     log_warnings: bool = True,
 ) -> Track | None:
@@ -23,13 +24,6 @@ def from_midi(
         channels=defaultdict(lambda: Channel(notes=[], program_nums=[])),
         metadata=TrackMetadata(),
     )
-
-    tempos = {message.tempo for message in midi_track if message.type == "set_tempo"}
-    if len(tempos) > 1:
-        if log_warnings:
-            logger.warning(f"Multiple tempos found: {tempos}")
-        return None
-    tempo = list(tempos)[0] if tempos else 500000
 
     message: Message
     for message in midi_track:
@@ -53,6 +47,21 @@ def from_midi(
         if len(channel.notes) > 0
     }
     return track
+
+
+def parse_tempo(midi_file: mido.MidiFile, log_warnings: bool = True) -> int | None:
+    tempos = {
+        message.tempo
+        for track in midi_file.tracks
+        for message in track
+        if isinstance(message, mido.MetaMessage) and message.type == "set_tempo"
+    }
+    if len(tempos) != 1:
+        if log_warnings:
+            logger.warning(f"Expected exactly one tempo: {tempos}")
+        return None
+    (tempo,) = tempos
+    return tempo
 
 
 def _parse_note(

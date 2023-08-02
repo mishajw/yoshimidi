@@ -84,9 +84,16 @@ def _parse_midi_path(path: pathlib.Path) -> "_ParseResult":
     except Exception:
         counters["bad_file"] += 1
         return _ParseResult(tracks=[], counters=counters)
+    tempo = track_parsing.parse_tempo(midi_file, log_warnings=False)
+    if tempo is None:
+        counters["bad_file_tempo"] += 1
+        return _ParseResult(tracks=[], counters=counters)
     tracks_with_failures: list[Track | None] = [
         track_parsing.from_midi(
-            midi_track, ticks_per_beat=midi_file.ticks_per_beat, log_warnings=False
+            midi_track,
+            ticks_per_beat=midi_file.ticks_per_beat,
+            tempo=tempo,
+            log_warnings=False,
         )
         for midi_track in midi_file.tracks
     ]
