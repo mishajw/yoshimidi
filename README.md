@@ -40,7 +40,18 @@ A language model with no control tokens that produces coherent-ish sounding musi
     - It was a bug in attention.
   - [x] Do a big training run!
 
+Final model ID: `2023-08-01_v2_moresups_untiedembs` [GH hash](https://github.com/mishajw/yoshimidi/commit/eafc7b8a3d48a2c893c4fc38a3c302f3131ba874).
+
 ### Milestone 2: Control tokens
+- [ ] Add code for annotating parsed MIDI data with metadata.
+  - [ ] Support notes or metadata in tracks.
+  - [ ] Add metadatas:
+    - [ ] {1..5} notes were played.
+    - [ ] Notes played were {-4,4} octaves higher than previous.
+    - [ ] Key.
+- [ ] Add token structure for metadata.
+- [ ] Train a model!
+- [ ] Add constraint on inference loop to not produce metadata.
 
 ### Milestone 3: Interactive web app
 
@@ -54,6 +65,8 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Shuffle tokenized dataset.
 - [ ] Save MIDI files at each eval step.
 - [ ] Fix memmap boundaries issue.
+- [ ] Come up with a better solution for time sampling.
+- [ ] Speed up inference with a KV cache.
 
 ## Notes
 - notes are too fast
