@@ -26,25 +26,28 @@ def run_inference(
     prompt_length = tokens.size(0)
     for _ in tqdm.tqdm(itertools.count(), desc="Generating tokens"):
         logits = model(tokens.unsqueeze(0).float())
+        assert temperature > 0, "TODO: Support temperature=0."
+        logits /= temperature
         activations = midi_activation(logits)[0, -1, :]
 
         lower, upper = one_hot_parsing.piece_range("kind")
-        kind = one_hot_parsing.KINDS[
-            _sample(activations[lower:upper], temperature=temperature)
-        ]
+        kind = one_hot_parsing.KINDS[_sample(activations[lower:upper])]
 
         if kind == "end":
             break
 
         lower, upper = one_hot_parsing.piece_range("time")
         time_support = activations[lower:upper]
-        time_uint8 = time_parsing.time_uint8_from_support(time_support)
+        # TODO: How can we best sample from the time distribution?
+        time_support_one_hot = torch.zeros_like(time_support)
+        time_support_one_hot[_sample(time_support)] = 1
+        time_uint8 = time_parsing.time_uint8_from_support(time_support_one_hot)
         time_delta_secs = time_parsing.time_from_uint8(time_uint8)
 
         lower, upper = one_hot_parsing.piece_range("note_key")
-        note_key = _sample(activations[lower:upper], temperature=temperature)
+        note_key = _sample(activations[lower:upper])
         lower, upper = one_hot_parsing.piece_range("note_octave")
-        note_octave = _sample(activations[lower:upper], temperature=temperature)
+        note_octave = _sample(activations[lower:upper])
         note = note_key + 12 * note_octave
 
         yield Note(
@@ -74,9 +77,5 @@ def run_inference(
 
 def _sample(
     probabilities: torch.Tensor,
-    temperature: float,
 ) -> int:
-    if temperature == 0:
-        return int(probabilities.argmax().item())
-    probabilities /= temperature
     return int(probabilities.multinomial(num_samples=1, replacement=True).item())
