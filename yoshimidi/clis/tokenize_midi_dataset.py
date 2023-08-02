@@ -57,7 +57,7 @@ class _TokenizeState:
 
 def main(
     lines_per_file: int = 2**22,
-):
+) -> None:
     config = OutputConfig()
     assert (
         config.dataset_parsed.exists()
@@ -80,7 +80,7 @@ def main(
 
 def _tokenize(
     channels: Iterable[Channel], output_dir: pathlib.Path, lines_per_file: int
-):
+) -> None:
     state = _TokenizeState(
         output_dir=output_dir,
         index=0,

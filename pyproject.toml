@@ -41,9 +41,23 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 allow_redefinition = true
+plugins = ["pydantic.mypy"]
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+no_implicit_reexport = true
+disallow_untyped_defs = true
+# TODO: Resolve issues with numpy generics.
+# disallow_any_generics = true
+
 [[tool.mypy.overrides]]
 module = ["mido.*", "fire"]
 ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [tool.isort]
 profile = "black"

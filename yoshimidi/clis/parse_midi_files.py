@@ -21,7 +21,7 @@ from yoshimidi.output_config import OutputConfig
 _LAKH_MIDI_DATASET_URL = "http://hog.ee.columbia.edu/craffel/lmd/lmd_full.tar.gz"
 
 
-def main():
+def main() -> None:
     config = OutputConfig()
 
     logger.info("Starting")
@@ -54,7 +54,7 @@ def _parse_data_multiprocessing(
     input_dir: pathlib.Path,
     output_file: pathlib.Path,
     output_metadata_file: pathlib.Path,
-):
+) -> None:
     counters: DefaultDict[str, int] = DefaultDict(int)
     midi_files = list(input_dir.rglob("*.mid"))
     with multiprocessing.Pool() as pool, output_file.open("wb") as f:

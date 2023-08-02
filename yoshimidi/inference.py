@@ -31,7 +31,7 @@ def run_inference(
         activations = midi_activation(logits)[0, -1, :]
 
         lower, upper = one_hot_parsing.piece_range("kind")
-        kind = one_hot_parsing.KINDS[_sample(activations[lower:upper])]
+        kind = token_parsing.KINDS[_sample(activations[lower:upper])]
 
         if kind == "end":
             break

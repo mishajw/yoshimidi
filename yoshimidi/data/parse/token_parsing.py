@@ -32,7 +32,7 @@ def from_channel(
 def from_channel_to_buffer(
     channel: Channel,
     output: UInt8[np.ndarray, "seq token"],  # noqa: F722
-):
+) -> None:
     for index, note in enumerate(channel.notes):
         _create_token_in_buffer(
             output[index],
@@ -43,7 +43,7 @@ def from_channel_to_buffer(
     _create_token_in_buffer(output[-1], kind="end", note=0, time_delta_secs=0)
 
 
-def get_buffer_size(channel: Channel):
+def get_buffer_size(channel: Channel) -> tuple[int, int]:
     return (len(channel.notes) + 1, len(_TOKEN_FIELDS))
 
 

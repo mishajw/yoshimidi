@@ -8,7 +8,7 @@ from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note
 
 
-def test_single_file():
+def test_single_file() -> None:
     with TemporaryDirectory() as temp_dir:
         root = pathlib.Path(temp_dir)
         (root / "output").mkdir()
@@ -52,7 +52,7 @@ def test_single_file():
         assert np.all(memmap[6 + 1 + 4 + 1 :, 0] == 0)
 
 
-def test_multiple_files():
+def test_multiple_files() -> None:
     with TemporaryDirectory() as temp_dir:
         root = pathlib.Path(temp_dir)
         (root / "output").mkdir()

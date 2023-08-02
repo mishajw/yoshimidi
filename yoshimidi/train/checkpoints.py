@@ -19,7 +19,7 @@ def save_checkpoint(
     model: Transformer,
     optimizer: torch.optim.Optimizer,
     output_config: OutputConfig,
-):
+) -> None:
     checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
     logger.info("Saving checkpoint: {}", checkpoint_path)
     assert not checkpoint_path.exists(), f"Checkpoint already exists: {checkpoint_path}"
@@ -40,7 +40,7 @@ def load_checkpoint(
     optimizer: torch.optim.Optimizer,
     output_config: OutputConfig,
     device: torch.device,
-):
+) -> tuple[Transformer, torch.optim.Optimizer]:
     if step == "latest":
         checkpoint_path = output_config.get_latest_checkpoint(tag=tag)
     else:

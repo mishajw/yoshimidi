@@ -34,7 +34,7 @@ class Config(BaseModel, extra="forbid"):
     use_wandb: bool = True
 
 
-def main(config_path: str):
+def main(config_path: str) -> None:
     with open(config_path) as f:
         config = Config.model_validate(toml.load(f))
     logger.info("Starting training")
