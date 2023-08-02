@@ -20,26 +20,25 @@ make train
 
 ## Milestones
 
-### Milestone 1: Music generation
+### Milestone 1: Music generation [done]
 A language model with no control tokens that produces coherent-ish sounding music.
 
 - [x] Data preparation (parsing, tokenization, etc).
   - [x] Complete data generation run.
-  - [ ] Fix memmap boundaries issue.
 - [x] Transformer implementation.
   - [x] Positional encodings.
 - [x] Basic training loop.
 - [x] Inference loop.
-- [ ] Evals:
+- [x] Evals:
   - [x] Eval schedules.
-  - [ ] Train/eval split.
-  - [ ] Save MIDI files at each eval step.
+  - [x] Train/eval split.
 - [x] Checkpointing.
-- [ ] Train a good model.
+- [x] Train a good model.
   - [x] Set up Docker image for training.
   - [x] Figure out vast.ai for training.
-  - [ ] Figure out why making it larger makes performance worse.
-  - [ ] Do a big training run!
+  - [x] Figure out why making it larger makes performance worse.
+    - It was a bug in attention.
+  - [x] Do a big training run!
 
 ### Milestone 2: Control tokens
 
@@ -53,11 +52,10 @@ A language model with no control tokens that produces coherent-ish sounding musi
 - [ ] Implement better initialization schemes.
 - [ ] Better tokenization of dataset.
 - [ ] Shuffle tokenized dataset.
+- [ ] Save MIDI files at each eval step.
+- [ ] Fix memmap boundaries issue.
 
 ## Notes
-- parsing+tokenizing data in background, eta 2H?
-  - plus upload time, est. 10G @ 2MBs => 1.4h
-  - so 4 hours total ==> 4PM
-- let's try to train a good model this evening.
-- still needed:
-  - evals?
+- notes are too fast
+- perhaps bc the supports are heavily biased towards smaller times?
+- let's try with more times.
