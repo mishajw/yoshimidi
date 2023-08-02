@@ -1,13 +1,15 @@
 import mido
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
-from yoshimidi.data.parse.track_parsing import DEFAULT_TEMPO, DEFAULT_TICKS_PER_BEAT
 from yoshimidi.data.parse.tracks import Note, Track
+
+_DEFAULT_TICKS_PER_BEAT = 120
+_DEFAULT_TEMPO = 447761
 
 
 def from_tracks(tracks: list[Track]) -> MidiFile:
     midi_file = MidiFile()
-    midi_file.ticks_per_beat = DEFAULT_TICKS_PER_BEAT
+    midi_file.ticks_per_beat = _DEFAULT_TICKS_PER_BEAT
     for track in tracks:
         assert (
             len(track.channels) == 1
@@ -15,7 +17,7 @@ def from_tracks(tracks: list[Track]) -> MidiFile:
         midi_track = MidiTrack()
         midi_file.tracks.append(midi_track)
         # TODO: Set program_nums.
-        midi_track.append(MetaMessage("set_tempo", tempo=DEFAULT_TEMPO, time=0))
+        midi_track.append(MetaMessage("set_tempo", tempo=_DEFAULT_TEMPO, time=0))
 
         for channel_num, channel in track.channels.items():
             midi_track.append(
@@ -27,8 +29,8 @@ def from_tracks(tracks: list[Track]) -> MidiFile:
                 time = int(
                     mido.second2tick(
                         previous_note.time_delta_secs,
-                        ticks_per_beat=DEFAULT_TICKS_PER_BEAT,
-                        tempo=DEFAULT_TEMPO,
+                        ticks_per_beat=_DEFAULT_TICKS_PER_BEAT,
+                        tempo=_DEFAULT_TEMPO,
                     )
                 )
                 midi_track.append(

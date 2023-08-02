@@ -9,9 +9,6 @@ from mido import Message, MidiTrack
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
 
-DEFAULT_TICKS_PER_BEAT = 120
-DEFAULT_TEMPO = 447761
-
 
 def from_midi(
     midi_track: MidiTrack,
