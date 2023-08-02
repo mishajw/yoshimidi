@@ -13,6 +13,7 @@ class OutputConfig(BaseModel, extra="forbid"):
     dataset_raw_compressed: Path = dataset_dir / "00_raw.tar.gz"
     dataset_raw: Path = dataset_dir / "01_raw"
     dataset_parsed: Path = dataset_dir / "02_parsed.jsonl"
+    dataset_parsed_metadata: Path = dataset_dir / "02_parsed.jsonl.metadata.json"
     dataset_tokenized: Path = dataset_dir / "03_tokenized"
 
     checkpoints: Path = root / "checkpoints"

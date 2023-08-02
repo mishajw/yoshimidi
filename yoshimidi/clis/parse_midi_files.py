@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import json
 import multiprocessing
 import pathlib
 import shutil
@@ -41,12 +42,18 @@ def main():
 
     logger.info("Stage 3: Parsing data")
     if not config.dataset_parsed.exists():
-        _parse_data_multiprocessing(config.dataset_raw, config.dataset_parsed)
+        _parse_data_multiprocessing(
+            input_dir=config.dataset_raw,
+            output_file=config.dataset_parsed,
+            output_metadata_file=config.dataset_parsed_metadata,
+        )
 
 
 def _parse_data_multiprocessing(
+    *,
     input_dir: pathlib.Path,
     output_file: pathlib.Path,
+    output_metadata_file: pathlib.Path,
 ):
     counters: DefaultDict[str, int] = DefaultDict(int)
     midi_files = list(input_dir.rglob("*.mid"))
@@ -66,6 +73,8 @@ def _parse_data_multiprocessing(
     logger.info("Counters:")
     for counter_name, counter_value in counters.items():
         logger.info("{}: {}", counter_name, counter_value)
+    with output_metadata_file.open("w") as f:
+        json.dump(counters, f)
 
 
 def _parse_midi_path(path: pathlib.Path) -> "_ParseResult":
