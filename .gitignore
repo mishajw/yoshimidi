@@ -1,10 +1,11 @@
-.env
-.vscode
-__pycache__
-out
-.wandb
 .DS_Store
+.env
 .mypy_cache
 .pytest_cache
 .ruff_cache
 .venv
+.vscode
+.wandb
+__pycache__
+notebooks/local
+out
