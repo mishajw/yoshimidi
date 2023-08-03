@@ -108,8 +108,9 @@ def main(
                 tokens, device=torch.device("cpu"), dtype=torch.float32
             )
             logits = model(one_hots.unsqueeze(0))
-            activations = midi_activation(logits)[0, -1, :]
             lower, upper = one_hot_parsing.piece_range("note_on")
+            logits[:, :, lower] = -1e6  # Exclude "no note" token.
+            activations = midi_activation(logits)[0, -1, :]
             resolved_note = _sample(activations[lower:upper])
             key_presses.append(
                 ResolvedKeyPress(
