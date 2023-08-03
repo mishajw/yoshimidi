@@ -128,7 +128,6 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
         note_buffer = None
         for index in range(channel.shape[0]):
             kind = token_parsing.get_kind(channel[index])
-            logger.info(kind)
 
             if note_buffer is not None and kind != "pause":
                 notes.append(note_buffer)
@@ -168,7 +167,6 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
         if note_buffer is not None:
             notes.append(note_buffer)
         channels.append(Channel(notes=notes, program_nums=[]))
-    print(len(channel_tokens[0]), len(channels[0].notes))
     return Track(
         channels={i: c for i, c in enumerate(channels)},
         metadata=TrackMetadata(),

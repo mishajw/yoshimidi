@@ -69,6 +69,6 @@ Final model ID: `2023-08-01_v2_moresups_untiedembs` [GH hash](https://github.com
 - [ ] Speed up inference with a KV cache.
 
 ## Notes
-- notes are too fast
-- perhaps bc the supports are heavily biased towards smaller times?
-- let's try with more times.
+- looks like the data encoding/decoding isn't working...
+- playing stuff from 02_parsed.jsonl is also very fast
+- back to data_transforms.ipynb for a bit i guess!

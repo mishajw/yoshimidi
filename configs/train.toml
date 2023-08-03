@@ -1,4 +1,4 @@
-tag = "2023-08-01_v2_moresups_untiedembs"
+tag = "2023-08-03_v1"
 use_wandb = true
 
 [transformer]

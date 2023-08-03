@@ -66,7 +66,7 @@ s3-upload-dataset:
 .PHONY: s3-download-dataset
 s3-download-dataset:
 	s5cmd sync \
-		's3://yoshimidi-v2/datasets/2023-07-31/*' \
+		's3://yoshimidi-v2/datasets/2023-08-03/*' \
 		out/dataset/03_tokenized/
 
 .PHONY: s3-upload-checkpoints
