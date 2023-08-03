@@ -109,11 +109,8 @@ def main(
             )
             logits = model(one_hots.unsqueeze(0))
             activations = midi_activation(logits)[0, -1, :]
-            lower, upper = one_hot_parsing.piece_range("note_key")
-            note_key = _sample(activations[lower:upper])
-            lower, upper = one_hot_parsing.piece_range("note_octave")
-            note_octave = _sample(activations[lower:upper])
-            resolved_note = note_key + 12 * note_octave
+            lower, upper = one_hot_parsing.piece_range("note_on")
+            resolved_note = _sample(activations[lower:upper])
             key_presses.append(
                 ResolvedKeyPress(
                     **dataclasses.asdict(key_press),
