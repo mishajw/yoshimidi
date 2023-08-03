@@ -31,6 +31,15 @@ du:
 	@echo "> checkpoints"
 	@du -sh out/checkpoints/*
 
+# Synth
+# =====
+
+.PHONY: synth
+synth:
+	poetry run python -m yoshimidi.synth \
+		--model-tag $(YOSHIMIDI_SYNTH_MODEL_TAG) \
+		--soundfont-path $(YOSHIMIDI_SYNTH_SOUNDFONT)
+
 # Dataset prep
 # ============
 
