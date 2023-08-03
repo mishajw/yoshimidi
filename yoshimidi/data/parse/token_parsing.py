@@ -6,13 +6,13 @@ from jaxtyping import UInt8
 from yoshimidi.data.parse import time_parsing
 from yoshimidi.data.parse.tracks import Channel
 
-KindType: TypeAlias = Literal["on", "off", "end"]
-KINDS: list[KindType] = ["on", "off", "end"]
+TokenFields: TypeAlias = Literal["kind", "note_on", "note_off", "time"]
+TOKEN_FIELDS: list[TokenFields] = ["kind", "note_on", "note_off", "time"]
 
-TokenFields: TypeAlias = Literal["kind", "note", "time"]
-_TOKEN_FIELDS: list[TokenFields] = ["kind", "note", "time"]
+KindType: TypeAlias = Literal["on", "off", "pause", "end"]
+KINDS: list[KindType] = ["on", "off", "pause", "end"]
 
-TOKEN_DIM = len(_TOKEN_FIELDS)
+TOKEN_DIM = len(TOKEN_FIELDS)
 DTYPE = np.uint8
 
 # jaxtyping
@@ -33,79 +33,70 @@ def from_channel_to_buffer(
     channel: Channel,
     output: UInt8[np.ndarray, "seq token"],  # noqa: F722
 ) -> None:
-    for index, note in enumerate(channel.notes):
-        _create_token_in_buffer(
-            output[index],
-            kind=note.kind,
-            note=note.note,
-            time_delta_secs=note.time_delta_secs,
-        )
-    _create_token_in_buffer(output[-1], kind="end", note=0, time_delta_secs=0)
+    index = 0
+    for note in channel.notes:
+        if note.kind == "on":
+            create_note_on_token(output[index], note=note.note)
+            index += 1
+        elif note.kind == "off":
+            create_note_off_token(output[index], note=note.note)
+            index += 1
+        else:
+            raise ValueError(note.kind)
+        if note.time_delta_secs > 0:
+            create_pause_token(output[index], time_delta_secs=note.time_delta_secs)
+            index += 1
+    create_end_token(output[index])
+    index += 1
+    assert index == output.shape[0], (index, output.shape[0])
 
 
 def get_buffer_size(channel: Channel) -> tuple[int, int]:
-    return (len(channel.notes) + 1, len(_TOKEN_FIELDS))
+    num_notes = len(channel.notes)
+    num_pauses = sum(1 for note in channel.notes if note.time_delta_secs > 0)
+    num_ends = 1
+    return (num_notes + num_pauses + num_ends, len(TOKEN_FIELDS))
 
 
 def get_kind(token: UInt8[np.ndarray, "token"]) -> KindType:
-    index = _TOKEN_FIELDS.index("kind")
-    if token[index] == 0:
-        return "on"
-    elif token[index] == 1:
-        return "off"
-    elif token[index] == 2:
-        return "end"
-    else:
-        raise ValueError(token)
+    index = TOKEN_FIELDS.index("kind")
+    kind_index = token[index]
+    assert kind_index < len(KINDS), (kind_index, len(KINDS))
+    return KINDS[token[index]]
 
 
-def get_note(token: UInt8[np.ndarray, "token"]) -> int:
-    index = _TOKEN_FIELDS.index("note")
-    assert get_kind(token) in ["on", "off"]
-    return token[index]
+def get_note_on(token: UInt8[np.ndarray, "token"]) -> int:
+    assert get_kind(token) == "on"
+    return token[TOKEN_FIELDS.index("note_on")]
+
+
+def get_note_off(token: UInt8[np.ndarray, "token"]) -> int:
+    assert get_kind(token) == "off"
+    return token[TOKEN_FIELDS.index("note_off")]
 
 
 def get_time_secs(token: UInt8[np.ndarray, "token"]) -> float:
-    index = _TOKEN_FIELDS.index("time")
-    assert get_kind(token) in ["on", "off"]
+    index = TOKEN_FIELDS.index("time")
+    assert get_kind(token) == "pause"
     return time_parsing.time_from_uint8(token[index])
 
 
-def create_token(
-    kind: KindType,
-    *,
-    note: int,
-    time_delta_secs: float,
-) -> UInt8[np.ndarray, "token"]:
-    buffer = np.zeros(TOKEN_DIM)
-    _create_token_in_buffer(buffer, kind, note=note, time_delta_secs=time_delta_secs)
-    return buffer
+def create_note_on_token(mmap: UInt8[np.ndarray, "token"], note: int) -> None:
+    mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("on")
+    mmap[TOKEN_FIELDS.index("note_on")] = note
 
 
-def _create_token_in_buffer(
-    mmap: UInt8[np.ndarray, "token"],
-    kind: KindType,
-    *,
-    note: int,
-    time_delta_secs: float,
+def create_note_off_token(mmap: UInt8[np.ndarray, "token"], note: int) -> None:
+    mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("off")
+    mmap[TOKEN_FIELDS.index("note_off")] = note
+
+
+def create_pause_token(
+    mmap: UInt8[np.ndarray, "token"], time_delta_secs: float
 ) -> None:
-    index = 0
+    mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("pause")
+    mmap[TOKEN_FIELDS.index("time")] = time_parsing.time_to_uint8(time_delta_secs)
 
-    if kind == "on":
-        mmap[index] = 0
-    elif kind == "off":
-        mmap[index] = 1
-    elif kind == "end":
-        mmap[index] = 2
-    else:
-        raise ValueError(kind)
-    index += 1
 
-    assert 0 <= note < 2**32, note
-    mmap[index] = note
-    index += 1
-
-    mmap[index] = time_parsing.time_to_uint8(time_delta_secs)
-    index += 1
-
-    assert index == mmap.shape[0], (index, mmap.shape[0])
+def create_end_token(mmap: UInt8[np.ndarray, "token"]) -> None:
+    mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("end")

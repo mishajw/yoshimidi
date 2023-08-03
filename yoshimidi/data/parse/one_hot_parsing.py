@@ -1,20 +1,19 @@
-from typing import Literal, Tuple, TypeAlias
+from typing import Tuple, cast
 
 import numpy as np
 import torch
 from jaxtyping import Float, UInt8
 
 from yoshimidi.data.parse import time_parsing
-from yoshimidi.data.parse.token_parsing import KINDS
+from yoshimidi.data.parse.token_parsing import KINDS, TOKEN_FIELDS, TokenFields
 
-PieceType: TypeAlias = Literal["kind", "note_key", "note_octave", "time"]
-PIECE_LENGTHS: dict[PieceType, int] = {
+TOKEN_FIELD_LENGTHS: dict[TokenFields, int] = {
     "kind": len(KINDS),
-    "note_key": 12,
-    "note_octave": 11,
+    "note_on": 2**7,
+    "note_off": 2**7,
     "time": time_parsing.NUM_TIME_SUPPORTS,
 }
-VOCAB = sum(PIECE_LENGTHS.values())  # 38
+VOCAB = sum(TOKEN_FIELD_LENGTHS.values())  # 38
 
 # jaxtyping
 seq, token, vocab = None, None, None
@@ -27,38 +26,33 @@ def from_tokens(
 ) -> Float[torch.Tensor, "seq vocab"]:  # noqa: F722
     input_tensor = torch.tensor(input, device=device, dtype=torch.int64)
     output = torch.zeros((input.shape[0], VOCAB), device=device, dtype=dtype)
-    index = 0
-    for piece, piece_length in PIECE_LENGTHS.items():
-        if piece == "kind":
-            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
-                input_tensor[:, 0],
-                num_classes=piece_length,
-            )
-        elif piece == "note_key":
-            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
-                input_tensor[:, 1] % 12,
-                num_classes=piece_length,
-            )
-        elif piece == "note_octave":
-            output[:, index : index + piece_length] = torch.nn.functional.one_hot(
-                input_tensor[:, 1] // 12,
-                num_classes=piece_length,
-            )
-        elif piece == "time":
-            for seq_index in range(input_tensor.shape[0]):
-                time_parsing.time_uint8_to_support(
-                    input[seq_index, 2],
-                    output[seq_index, index : index + piece_length],
-                )
-        index += piece_length
-    assert index == output.shape[1], (index, output.shape[1])
+    start, end = piece_range("kind")
+    output[:, start:end] = torch.nn.functional.one_hot(
+        input_tensor[:, TOKEN_FIELDS.index("kind")],
+        num_classes=TOKEN_FIELD_LENGTHS["kind"],
+    )
+    start, end = piece_range("note_on")
+    output[:, start:end] = torch.nn.functional.one_hot(
+        input_tensor[:, TOKEN_FIELDS.index("note_on")],
+        num_classes=TOKEN_FIELD_LENGTHS["note_on"],
+    )
+    start, end = piece_range("note_off")
+    output[:, start:end] = torch.nn.functional.one_hot(
+        input_tensor[:, TOKEN_FIELDS.index("note_off")],
+        num_classes=TOKEN_FIELD_LENGTHS["note_off"],
+    )
+    for seq_index in range(input_tensor.shape[0]):
+        time_parsing.time_uint8_to_support(
+            cast(int, input_tensor[seq_index, TOKEN_FIELDS.index("time")].item()),
+            output[seq_index, start:end],
+        )
     return output
 
 
-def piece_range(piece_type: PieceType) -> Tuple[int, int]:
+def piece_range(token_field: TokenFields) -> Tuple[int, int]:
     index = 0
-    for piece, length in PIECE_LENGTHS.items():
-        if piece == piece_type:
+    for tf, length in TOKEN_FIELD_LENGTHS.items():
+        if tf == token_field:
             return index, index + length
         index += length
-    raise ValueError(piece)
+    raise ValueError(token_field)

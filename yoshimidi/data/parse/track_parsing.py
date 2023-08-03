@@ -125,22 +125,50 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
         assert channel.shape[1] == token_parsing.TOKEN_DIM
         notes: list[Note] = []
 
+        note_buffer = None
         for index in range(channel.shape[0]):
             kind = token_parsing.get_kind(channel[index])
+            logger.info(kind)
+
+            if note_buffer is not None and kind != "pause":
+                notes.append(note_buffer)
+                note_buffer = None
+
             if kind == "end":
                 assert index == channel.shape[0] - 1
                 break
-            note = token_parsing.get_note(channel[index])
-            time_secs = token_parsing.get_time_secs(channel[index])
-            notes.append(
-                Note(
+
+            elif kind == "on":
+                note = token_parsing.get_note_on(channel[index])
+                note_buffer = Note(
                     note=note,
-                    kind=kind,
+                    kind="on",
                     velocity=127,
-                    time_delta_secs=time_secs,
+                    time_delta_secs=0,
                 )
-            )
+
+            elif kind == "off":
+                note = token_parsing.get_note_off(channel[index])
+                note_buffer = Note(
+                    note=note,
+                    kind="off",
+                    velocity=127,
+                    time_delta_secs=0,
+                )
+
+            elif kind == "pause":
+                time_delta_secs = token_parsing.get_time_secs(channel[index])
+                if note_buffer is not None:
+                    if note_buffer.time_delta_secs != 0:
+                        logger.warning("Found multiple pause tokens in a row")
+                    note_buffer.time_delta_secs += time_delta_secs
+                else:
+                    logger.warning("Found pause without preceding note")
+
+        if note_buffer is not None:
+            notes.append(note_buffer)
         channels.append(Channel(notes=notes, program_nums=[]))
+    print(len(channel_tokens[0]), len(channels[0].notes))
     return Track(
         channels={i: c for i, c in enumerate(channels)},
         metadata=TrackMetadata(),

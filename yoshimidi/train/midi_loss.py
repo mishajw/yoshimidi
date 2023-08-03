@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.parse.one_hot_parsing import PIECE_LENGTHS
+from yoshimidi.data.parse.one_hot_parsing import TOKEN_FIELD_LENGTHS
 from yoshimidi.data.parse.time_parsing import NUM_TIME_SUPPORTS
 
 
@@ -27,7 +27,7 @@ def autoregressive_midi_loss(
     index = 0
     kind_loss, note_key_loss, note_octave_loss, time_loss = None, None, None, None
 
-    for piece, piece_length in PIECE_LENGTHS.items():
+    for piece, piece_length in TOKEN_FIELD_LENGTHS.items():
         if piece == "kind":
             assert piece_length == 3
             kind_loss = torch.nn.functional.cross_entropy(

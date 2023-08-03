@@ -62,7 +62,7 @@ train:
 s3-upload-dataset:
 	s5cmd sync \
 		out/dataset/03_tokenized/ \
-		's3://yoshimidi-v2/datasets/2023-07-31/'
+		's3://yoshimidi-v2/datasets/2023-08-03/'
 .PHONY: s3-download-dataset
 s3-download-dataset:
 	s5cmd sync \

@@ -2,7 +2,7 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 
-from yoshimidi.data.parse.one_hot_parsing import PIECE_LENGTHS
+from yoshimidi.data.parse.one_hot_parsing import TOKEN_FIELD_LENGTHS
 
 
 def midi_activation(
@@ -10,7 +10,7 @@ def midi_activation(
 ) -> Float[Tensor, "batch seq vocab"]:  # noqa: F722
     results = []
     index = 0
-    for piece_length in PIECE_LENGTHS.values():
+    for piece_length in TOKEN_FIELD_LENGTHS.values():
         results.append(
             torch.nn.functional.softmax(
                 logits[:, :, index : index + piece_length], dim=2
