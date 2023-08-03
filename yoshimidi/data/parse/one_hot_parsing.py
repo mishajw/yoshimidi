@@ -41,6 +41,7 @@ def from_tokens(
         input_tensor[:, TOKEN_FIELDS.index("note_off")],
         num_classes=TOKEN_FIELD_LENGTHS["note_off"],
     )
+    start, end = piece_range("time")
     for seq_index in range(input_tensor.shape[0]):
         time_parsing.time_uint8_to_support(
             cast(int, input_tensor[seq_index, TOKEN_FIELDS.index("time")].item()),

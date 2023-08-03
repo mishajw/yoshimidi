@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import torch
 from jaxtyping import Float
 
-from yoshimidi.data.parse.one_hot_parsing import TOKEN_FIELD_LENGTHS
-from yoshimidi.data.parse.time_parsing import NUM_TIME_SUPPORTS
+from yoshimidi.data.parse import one_hot_parsing
+from yoshimidi.data.parse.token_parsing import TOKEN_FIELDS
 
 
 @dataclass
@@ -24,41 +24,25 @@ def autoregressive_midi_loss(
     labels = torch.flatten(batch[:, 1:, :], start_dim=0, end_dim=1)
     logits = torch.flatten(logits[:, :-1, :], start_dim=0, end_dim=1)
 
-    index = 0
     kind_loss, note_key_loss, note_octave_loss, time_loss = None, None, None, None
 
-    for piece, piece_length in TOKEN_FIELD_LENGTHS.items():
-        if piece == "kind":
-            assert piece_length == 3
-            kind_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + piece_length],
-                labels[:, index : index + piece_length],
-            )
+    for token_field in TOKEN_FIELDS:
+        start, end = one_hot_parsing.piece_range(token_field)
+        loss = torch.nn.functional.cross_entropy(
+            logits[:, start:end],
+            labels[:, start:end],
+        )
+        if token_field == "kind":
+            kind_loss = loss
+        elif token_field == "note_on":
+            note_key_loss = loss
+        elif token_field == "note_off":
+            note_octave_loss = loss
+        elif token_field == "time":
+            time_loss = loss
+        else:
+            raise ValueError(token_field)
 
-        elif piece == "note_key":
-            assert piece_length == 12
-            note_key_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + piece_length],
-                labels[:, index : index + piece_length],
-            )
-
-        elif piece == "note_octave":
-            assert piece_length == 11
-            note_octave_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + piece_length],
-                labels[:, index : index + piece_length],
-            )
-
-        elif piece == "time":
-            assert piece_length == NUM_TIME_SUPPORTS
-            time_loss = torch.nn.functional.cross_entropy(
-                logits[:, index : index + piece_length],
-                labels[:, index : index + piece_length],
-            )
-
-        index += piece_length
-
-    assert index == batch.size(2)
     assert kind_loss is not None
     assert note_key_loss is not None
     assert note_octave_loss is not None
