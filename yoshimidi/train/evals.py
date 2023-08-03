@@ -32,7 +32,7 @@ def evaluate(
     return LossValues(
         loss=torch.stack([loss.loss for loss in losses]).mean(),
         kind_loss=torch.stack([loss.kind_loss for loss in losses]).mean(),
-        note_key_loss=torch.stack([loss.note_key_loss for loss in losses]).mean(),
-        note_octave_loss=torch.stack([loss.note_octave_loss for loss in losses]).mean(),
+        note_on_loss=torch.stack([loss.note_on_loss for loss in losses]).mean(),
+        note_off_loss=torch.stack([loss.note_off_loss for loss in losses]).mean(),
         time_loss=torch.stack([loss.time_loss for loss in losses]).mean(),
     )
