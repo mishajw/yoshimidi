@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterator, Literal
@@ -11,6 +12,7 @@ import pygame.locals
 import scipy
 import torch
 from jaxtyping import Float
+from loguru import logger
 
 from yoshimidi.data.parse import one_hot_parsing, token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note
@@ -45,7 +47,7 @@ SYNTH_KEYS = [
     pygame.locals.K_QUOTE,
     pygame.locals.K_RIGHTBRACKET,
 ]
-
+NUM_NOTES = one_hot_parsing.TOKEN_FIELD_LENGTHS["note_on"]
 
 # jaxtyping
 note = None
@@ -56,15 +58,17 @@ def main(
     *,
     model_tag: str,
     soundfont_path: str,
+    temperature: float = 0.5,
 ) -> None:
     pygame.init()
-    pygame.display.set_mode((500, 500))
+    screen = pygame.display.set_mode((500, 500))
+    pygame.font.init()
+    font = pygame.font.SysFont("Arial", 20)
 
-    fs = fluidsynth.Synth()
-    fs.start()
-    sfid = fs.sfload(soundfont_path)
-    fs.program_select(0, sfid, 0, 0)
-    fs.setting("synth.gain", 0.6)
+    synth = fluidsynth.Synth(gain=1.0)
+    synth.start()
+    synth_soundfont = synth.sfload(soundfont_path)
+    synth.program_select(0, synth_soundfont, 0, 0)
 
     model = Transformer(
         TransformerConfig(
@@ -91,8 +95,7 @@ def main(
         key_press = None
         now = datetime.now()
         if event.type == pygame.locals.QUIT:
-            pygame.quit()
-            return
+            break
         elif event.type == pygame.locals.KEYDOWN and event.key in SYNTH_KEYS:
             key_press = KeyPress(
                 key_index=SYNTH_KEYS.index(event.key),
@@ -121,15 +124,19 @@ def main(
                     resolved_note=resolved_note,
                 )
             )
-            fs.noteoff(0, resolved_note)
+            synth.noteoff(0, resolved_note)
 
         elif key_press.type == "on":
             model_distribution = _get_model_distribution(
                 model,
                 resolved_key_presses,
                 now,
+                temperature=temperature,
             )
             position_distribution = _get_position_distribution(
+                key_press=key_press,
+            )
+            constraint_distribution = _get_constraint_distribution(
                 key_press=key_press,
                 now=now,
                 resolved_key_presses=resolved_key_presses,
@@ -140,18 +147,37 @@ def main(
             distribution = (
                 model_distribution
                 * position_distribution
+                * constraint_distribution
                 * currently_playing_distribution
             )
-            assert torch.all(distribution >= 0)
             distribution /= distribution.sum()
-            resolved_note = _sample(distribution)
+            chosen_distribution = np.random.multinomial(n=1, pvals=distribution).astype(
+                np.float32
+            )
+            pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, 500, 500))
+            _draw_distribution(
+                screen,
+                font,
+                model=model_distribution,
+                position=position_distribution,
+                constraint=constraint_distribution,
+                currently_playing=currently_playing_distribution,
+                final=distribution,
+                chosen=chosen_distribution,
+            )
+            pygame.display.flip()
+            assert np.all(distribution >= 0)
+            resolved_note = int(chosen_distribution.argmax())
             resolved_key_presses.append(
                 ResolvedKeyPress(
                     **dataclasses.asdict(key_press),
                     resolved_note=resolved_note,
                 )
             )
-            fs.noteon(0, resolved_note, 100)
+            synth.noteon(0, resolved_note, 100)
+    logger.info("Quitting...")
+    pygame.quit()
+    synth.delete()
 
 
 @dataclass
@@ -185,16 +211,11 @@ def _key_presses_to_notes(
         )
 
 
-def _sample(
-    probabilities: torch.Tensor,
-) -> int:
-    return int(probabilities.multinomial(num_samples=1, replacement=True).item())
-
-
 def _get_model_distribution(
     model: Transformer,
     resolved_key_presses: list[ResolvedKeyPress],
     now: datetime,
+    temperature: float,
 ) -> Float[np.ndarray, "note"]:
     notes = list(_key_presses_to_notes(resolved_key_presses, now))
     tokens = token_parsing.from_channel(Channel(notes=notes, program_nums=[]))
@@ -202,7 +223,7 @@ def _get_model_distribution(
         tokens, device=torch.device("cpu"), dtype=torch.float32
     )
     logits = model(one_hots.unsqueeze(0))
-    logits /= 0.1
+    logits /= temperature
     lower, upper = one_hot_parsing.piece_range("note_on")
     logits[:, :, lower] = -1e6  # Exclude "no note" token.
     activations = midi_activation(logits)[0, -1, :]
@@ -211,25 +232,35 @@ def _get_model_distribution(
 
 def _get_position_distribution(
     key_press: KeyPress,
+) -> np.ndarray:
+    note = key_press.key_index + 40
+    distribution = scipy.stats.norm.pdf(list(range(NUM_NOTES)), loc=note, scale=10)
+    return distribution / distribution.sum()
+
+
+def _get_constraint_distribution(
+    key_press: KeyPress,
     now: datetime,
     resolved_key_presses: list[ResolvedKeyPress],
 ) -> np.ndarray:
-    num_notes = one_hot_parsing.TOKEN_FIELD_LENGTHS["note_on"]
-    if len(resolved_key_presses) == 0:
-        return np.ones(num_notes)
-    # for resolved_key_press in resolved_key_presses:
-    #     if resolved_key_press.type == "off":
-    #         continue
-    #     diff = (key_press.key_index - resolved_key_press.key_index)
-    #     note = resolved_key_press.resolved_note + diff
-    #     weight = math.exp(-(now - resolved_key_press.time).total_seconds())
-    #     print(resolved_key_press.resolved_note, diff, note, weight, sep="\t")
-    #     note_sum += note * weight
-    #     weight_sum += weight
-    # note = note_sum / weight_sum
-    note = key_press.key_index + 40
-    distribution = scipy.stats.norm.pdf(list(range(num_notes)), loc=note, scale=10)
-    return distribution / distribution.sum()
+    distribution = np.ones(NUM_NOTES)
+    for resolved_key_press in resolved_key_presses:
+        if resolved_key_press.type == "off":
+            continue
+        time_since_secs = (now - resolved_key_press.time).total_seconds()
+        weight = min(1, math.exp(-time_since_secs + 5))
+        key_distribution = np.ones(NUM_NOTES)
+        if key_press.key_index > resolved_key_press.key_index:
+            key_distribution[: resolved_key_press.resolved_note + 1] = 1 - weight
+        elif key_press.key_index < resolved_key_press.key_index:
+            key_distribution[resolved_key_press.resolved_note :] = 1 - weight
+        else:
+            key_distribution[:] = 1 - weight
+            key_distribution[resolved_key_press.resolved_note] = 1
+        key_distribution /= key_distribution.sum()
+        distribution *= key_distribution
+        distribution /= distribution.sum()
+    return distribution
 
 
 def _get_currently_playing_distribution(
@@ -242,9 +273,67 @@ def _get_currently_playing_distribution(
         elif key_press.type == "off" and key_press.resolved_note in currently_playing:
             currently_playing.remove(key_press.resolved_note)
     currently_playing = list(currently_playing)
-    distribution = np.ones(one_hot_parsing.TOKEN_FIELD_LENGTHS["note_on"])
+    distribution = np.ones(NUM_NOTES)
     distribution[currently_playing] = 0
     return distribution / distribution.sum()
+
+
+def _draw_distribution(
+    screen: pygame.Surface,
+    font: pygame.font.Font,
+    *,
+    model: np.ndarray,
+    position: np.ndarray,
+    constraint: np.ndarray,
+    currently_playing: np.ndarray,
+    final: np.ndarray,
+    chosen: np.ndarray,
+) -> None:
+    num_distributions = 6
+    width = screen.get_width()
+    height = screen.get_height()
+    colors = [
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 255, 0),
+        (255, 0, 255),
+        (0, 255, 255),
+    ]
+
+    def _draw(
+        d: np.ndarray,
+        index: int,
+        title: str,
+    ) -> None:
+        start_x = 0
+        end_x = width
+        start_y = height * index / num_distributions
+        end_y = height * (index + 1) / num_distributions
+        max_d = d.max()
+        d /= max_d
+        for i, p in enumerate(d):
+            pygame.draw.rect(
+                screen,
+                colors[index],
+                pygame.Rect(
+                    start_x + ((end_x - start_x) / len(d)) * i,
+                    start_y + (end_y - start_y) * (1 - p),
+                    (end_x - start_x) / len(d),
+                    (end_y - start_y) * p,
+                ),
+            )
+        title_surface = font.render(
+            f"{title} (max={max_d:.3f})", False, (255, 255, 255)
+        )
+        screen.blit(title_surface, (start_x, start_y))
+
+    _draw(model, 0, title="model")
+    _draw(position, 1, title="position")
+    _draw(constraint, 2, title="constraint")
+    _draw(currently_playing, 3, title="playing")
+    _draw(final, 4, title="final")
+    _draw(chosen, 5, title="chosen")
 
 
 if __name__ == "__main__":
