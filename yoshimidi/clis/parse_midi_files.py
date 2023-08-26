@@ -61,7 +61,7 @@ def _parse_data_multiprocessing(
         results = pool.imap_unordered(_parse_midi_path, midi_files)
         pbar = tqdm.tqdm(results, desc="Parsing files", total=len(midi_files))
         for result in pbar:
-            f.write(msgspec.json.encode(result.tracks) + b"\n")
+            f.write(msgspec.json.encode(result.track) + b"\n")
             for counter_name, counter_value in result.counters.items():
                 counters[counter_name] += counter_value
             pbar.set_postfix(
@@ -83,37 +83,22 @@ def _parse_midi_path(path: pathlib.Path) -> "_ParseResult":
         midi_file = MidiFile(path)
     except Exception:
         counters["bad_file"] += 1
-        return _ParseResult(tracks=[], counters=counters)
-    tempo = track_parsing.parse_tempo(midi_file, log_warnings=False)
-    if tempo is None:
-        counters["bad_file_tempo"] += 1
-        return _ParseResult(tracks=[], counters=counters)
-    tracks_with_failures: list[Track | None] = [
-        track_parsing.from_midi(
-            midi_track,
-            ticks_per_beat=midi_file.ticks_per_beat,
-            tempo=tempo,
-            log_warnings=False,
-        )
-        for midi_track in midi_file.tracks
-    ]
-    tracks: list[Track] = [track for track in tracks_with_failures if track is not None]
-    counters["successful_tracks"] += len(tracks)
-    counters["successful_channels"] += sum(len(track.channels) for track in tracks)
+        return _ParseResult(track=None, counters=counters)
+    track = track_parsing.from_midi(midi_file, log_warnings=False)
+    if track is None:
+        counters["bad_track"] += 1
+        return _ParseResult(track=None, counters=counters)
+    counters["successful_tracks"] += 1
+    counters["successful_channels"] += len(track.channels)
     counters["successful_notes"] += sum(
-        len(channel.notes) for track in tracks for channel in track.channels.values()
+        len(channel.notes) for channel in track.channels.values()
     )
-    counters["failed_tracks"] += len(tracks_with_failures) - len(tracks)
-    if len(tracks) == 0:
-        counters["bad_empty_files"] += 1
-        return _ParseResult(tracks=[], counters=counters)
-    counters["successful_files"] += 1
-    return _ParseResult(tracks=tracks, counters=counters)
+    return _ParseResult(track=track, counters=counters)
 
 
 @dataclass
 class _ParseResult:
-    tracks: list[Track]
+    track: Track | None
     counters: DefaultDict[str, int]
 
 

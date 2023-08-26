@@ -1,69 +1,55 @@
 from collections import defaultdict
 
-import mido
 import msgspec
 import numpy as np
 from loguru import logger
-from mido import Message, MidiTrack
+from mido import Message, MidiFile
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
 
 
 def from_midi(
-    midi_track: MidiTrack,
+    midi_file: MidiFile,
     *,
-    tempo: int,
-    ticks_per_beat: float,
     log_warnings: bool = True,
 ) -> Track | None:
-    track = Track(
-        channels=defaultdict(lambda: Channel(notes=[], program_nums=[])),
-        metadata=TrackMetadata(),
+    assert midi_file.type in [0, 1], midi_file.type
+    channels: dict[int, Channel] = defaultdict(
+        lambda: Channel(notes=[], program_nums=[])
     )
-
-    message: Message
-    for message in midi_track:
+    cum_secs: float = 0.0
+    channel_cum_secs: dict[int, float] = defaultdict(lambda: 0.0)
+    for message in midi_file:
         if message.type == "stop":
             if log_warnings:
                 logger.warning(f"Found stop message: {message}")
             return None
-        note = _parse_note(
-            message,
-            ticks_per_beat=ticks_per_beat,
-            tempo=tempo,
-        )
-        if note is not None:
-            track.channels[message.channel].notes.append(note)
-
-    track.channels = {
-        channel_num: msgspec.structs.replace(
-            channel, notes=_shift_time_deltas(channel.notes)
-        )
-        for channel_num, channel in track.channels.items()
-        if len(channel.notes) > 0
-    }
+        cum_secs += message.time
+        if not hasattr(message, "channel"):
+            continue
+        message_channel_delta_secs = cum_secs - channel_cum_secs[message.channel]
+        channel_cum_secs[message.channel] = cum_secs
+        note = _parse_note(message, time_secs=message_channel_delta_secs)
+        if note is None:
+            continue
+        channels[message.channel].notes.append(note)
+    track = Track(
+        channels={
+            channel_num: msgspec.structs.replace(
+                # The above time deltas are the deltas *before* the note was played.
+                # We want the deltas to be after, so we shift them.
+                channel,
+                notes=_shift_time_deltas(channel.notes),
+            )
+            for channel_num, channel in channels.items()
+        },
+        metadata=TrackMetadata(),
+    )
     return track
 
 
-def parse_tempo(midi_file: mido.MidiFile, log_warnings: bool = True) -> int | None:
-    tempos = {
-        message.tempo
-        for track in midi_file.tracks
-        for message in track
-        if isinstance(message, mido.MetaMessage) and message.type == "set_tempo"
-    }
-    if len(tempos) != 1:
-        if log_warnings:
-            logger.warning(f"Expected exactly one tempo: {tempos}")
-        return None
-    (tempo,) = tempos
-    return tempo
-
-
-def _parse_note(
-    message: Message, *, ticks_per_beat: float, tempo: float
-) -> Note | None:
+def _parse_note(message: Message, *, time_secs: float) -> Note | None:
     """
     N.B.: This function must be combnied with _shift_time_deltas() to get the correct
     time deltas.
@@ -72,9 +58,6 @@ def _parse_note(
         return None
     if message.channel == 9:
         return None  # Skip drum channel.
-    time_secs = mido.tick2second(
-        tick=message.time, ticks_per_beat=ticks_per_beat, tempo=tempo
-    )
     if message.type == "note_on" and message.velocity > 0:
         return Note(
             note=message.note,
@@ -171,3 +154,22 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
         channels={i: c for i, c in enumerate(channels)},
         metadata=TrackMetadata(),
     )
+
+
+def _split_channels(messages: list[Message]) -> dict[int, list[Message]]:
+    channels = list(
+        set(message.channel for message in messages if hasattr(message, "channel"))
+    )
+    if channels == []:
+        channels = [0]
+    time_buffers = {channel: 0.0 for channel in channels}
+    result: dict[int, list[Message]] = {channel: [] for channel in channels}
+    for message in messages:
+        message_channel = getattr(message, "channel", channels[0])
+        for channel in channels:
+            if channel != message_channel:
+                time_buffers[channel] += message.time
+        message.time += time_buffers[message_channel]
+        time_buffers[message_channel] = 0.0
+        result[message_channel].append(message)
+    return result
