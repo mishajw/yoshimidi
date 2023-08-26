@@ -18,6 +18,8 @@ def time_to_uint8(time: float) -> int:
     time_norm = max(time_norm, 0)
     time_norm = min(time_norm, 1)
     time_uint8 = int(time_norm * 2**8)
+    if time_uint8 == 256:
+        time_uint8 = 255
     assert time_uint8 >= 0 and time_uint8 <= 255, time_uint8
     return time_uint8
 

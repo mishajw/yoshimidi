@@ -69,8 +69,7 @@ def main(
             channels=(
                 channel
                 for line in f
-                for track in msgspec.json.decode(line, type=list[Track])
-                for channel in track.channels.values()
+                for channel in msgspec.json.decode(line, type=Track).channels.values()
                 if len(channel.notes) > 0
             ),
             output_dir=config.dataset_tokenized,

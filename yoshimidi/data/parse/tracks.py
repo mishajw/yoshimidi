@@ -8,7 +8,7 @@ class TrackMetadata(msgspec.Struct):
     key: Optional[str] = None
 
 
-class Note(msgspec.Struct):
+class Note(msgspec.Struct, tag=True):
     note: int
     kind: Literal["on", "off"]
     velocity: int
@@ -16,7 +16,7 @@ class Note(msgspec.Struct):
     time_delta_secs: float
 
 
-class KeySignature(msgspec.Struct):
+class KeySignature(msgspec.Struct, tag=True):
     key: str
 
 
