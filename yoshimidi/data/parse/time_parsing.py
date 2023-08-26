@@ -15,7 +15,11 @@ def time_to_uint8(time: float) -> int:
         return 0
     time_log = math.log(time)
     time_norm = (time_log - _TIME_LOG_MIN) / (_TIME_LOG_MAX - _TIME_LOG_MIN)
-    return int(time_norm * 2**8)
+    time_norm = max(time_norm, 0)
+    time_norm = min(time_norm, 1)
+    time_uint8 = int(time_norm * 2**8)
+    assert time_uint8 >= 0 and time_uint8 <= 255, time_uint8
+    return time_uint8
 
 
 def time_from_uint8(time_uint8: int | float) -> float:
