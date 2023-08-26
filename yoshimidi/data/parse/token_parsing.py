@@ -4,16 +4,46 @@ import numpy as np
 from jaxtyping import UInt8
 
 from yoshimidi.data.parse import time_parsing
-from yoshimidi.data.parse.tracks import Channel
+from yoshimidi.data.parse.tracks import Channel, KeySignature, Note
 
-TokenFields: TypeAlias = Literal["kind", "note_on", "note_off", "time"]
-TOKEN_FIELDS: list[TokenFields] = ["kind", "note_on", "note_off", "time"]
+TokenFields: TypeAlias = Literal["kind", "note_on", "note_off", "time", "key_signature"]
+TOKEN_FIELDS: list[TokenFields] = [
+    "kind",
+    "note_on",
+    "note_off",
+    "time",
+    "key_signature",
+]
 
-KindType: TypeAlias = Literal["on", "off", "pause", "end"]
-KINDS: list[KindType] = ["on", "off", "pause", "end"]
+KindType: TypeAlias = Literal["on", "off", "pause", "end", "key_signature"]
+KINDS: list[KindType] = ["on", "off", "pause", "end", "key_signature"]
 
 TOKEN_DIM = len(TOKEN_FIELDS)
 DTYPE = np.uint8
+
+KEY_SIGNATURES = list(
+    f"{note}{mode}"
+    for note in [
+        "A",
+        "A#",
+        "Ab",
+        "B",
+        "Bb",
+        "C",
+        "C#",
+        "D",
+        "D#",
+        "Db",
+        "E",
+        "Eb",
+        "F",
+        "F#",
+        "G",
+        "G#",
+        "Gb",
+    ]
+    for mode in ["", "m"]
+)
 
 # jaxtyping
 seq, token = None, None
@@ -35,15 +65,18 @@ def from_channel_to_buffer(
 ) -> None:
     index = 0
     for note in channel.notes:
-        if note.kind == "on":
+        if isinstance(note, Note) and note.kind == "on":
             create_note_on_token(output[index], note=note.note)
             index += 1
-        elif note.kind == "off":
+        elif isinstance(note, Note) and note.kind == "off":
             create_note_off_token(output[index], note=note.note)
             index += 1
+        elif isinstance(note, KeySignature):
+            create_key_signature_token(output[index], key=note.key)
+            index += 1
         else:
-            raise ValueError(note.kind)
-        if note.time_delta_secs > 0:
+            raise ValueError(note)
+        if isinstance(note, Note) and note.time_delta_secs > 0:
             create_pause_token(output[index], time_delta_secs=note.time_delta_secs)
             index += 1
     create_end_token(output[index])
@@ -53,7 +86,11 @@ def from_channel_to_buffer(
 
 def get_buffer_size(channel: Channel) -> tuple[int, int]:
     num_notes = len(channel.notes)
-    num_pauses = sum(1 for note in channel.notes if note.time_delta_secs > 0)
+    num_pauses = sum(
+        1
+        for note in channel.notes
+        if isinstance(note, Note) and note.time_delta_secs > 0
+    )
     num_ends = 1
     return (num_notes + num_pauses + num_ends, len(TOKEN_FIELDS))
 
@@ -81,6 +118,12 @@ def get_time_secs(token: UInt8[np.ndarray, "token"]) -> float:
     return time_parsing.time_from_uint8(token[index])
 
 
+def get_key_signature(token: UInt8[np.ndarray, "token"]) -> str:
+    index = TOKEN_FIELDS.index("key_signature")
+    assert get_kind(token) == "key_signature"
+    return KEY_SIGNATURES[token[index]]
+
+
 def create_note_on_token(mmap: UInt8[np.ndarray, "token"], note: int) -> None:
     mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("on")
     mmap[TOKEN_FIELDS.index("note_on")] = note
@@ -100,3 +143,9 @@ def create_pause_token(
 
 def create_end_token(mmap: UInt8[np.ndarray, "token"]) -> None:
     mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("end")
+
+
+def create_key_signature_token(mmap: UInt8[np.ndarray, "token"], key: str) -> None:
+    mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("key_signature")
+    assert key in KEY_SIGNATURES, key
+    mmap[TOKEN_FIELDS.index("key_signature")] = KEY_SIGNATURES.index(key)

@@ -16,8 +16,12 @@ class Note(msgspec.Struct):
     time_delta_secs: float
 
 
+class KeySignature(msgspec.Struct):
+    key: str
+
+
 class Channel(msgspec.Struct):
-    notes: list[Note]
+    notes: list[Note | KeySignature]
     # See https://en.wikipedia.org/wiki/General_MIDI#Program_change_events.
     program_nums: list[int]
 

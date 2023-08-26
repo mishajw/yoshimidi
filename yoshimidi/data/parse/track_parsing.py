@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import cast
 
 import msgspec
 import numpy as np
@@ -6,7 +7,13 @@ from loguru import logger
 from mido import Message, MidiFile
 
 from yoshimidi.data.parse import token_parsing
-from yoshimidi.data.parse.tracks import Channel, Note, Track, TrackMetadata
+from yoshimidi.data.parse.tracks import (
+    Channel,
+    KeySignature,
+    Note,
+    Track,
+    TrackMetadata,
+)
 
 
 def from_midi(
@@ -14,7 +21,10 @@ def from_midi(
     *,
     log_warnings: bool = True,
 ) -> Track | None:
-    assert midi_file.type in [0, 1], midi_file.type
+    if midi_file.type not in [0, 1]:
+        if log_warnings:
+            logger.warning(f"Unexpected MIDI file type: {midi_file.type}")
+        return None
     channels: dict[int, Channel] = defaultdict(
         lambda: Channel(notes=[], program_nums=[])
     )
@@ -80,24 +90,26 @@ def _parse_note(message: Message, *, time_secs: float) -> Note | None:
         return None
 
 
-def _shift_time_deltas(notes: list[Note]) -> list[Note]:
-    shifted_notes = []
-    for note1, note2 in zip(notes[:-1], notes[1:], strict=True):
-        shifted_notes.append(
-            Note(
-                note=note1.note,
-                kind=note1.kind,
-                velocity=note1.velocity,
-                time_delta_secs=note2.time_delta_secs,
-            )
+def _shift_time_deltas(notes: list[Note | KeySignature]) -> list[Note | KeySignature]:
+    shifted_notes = [*notes]
+    note_indices = [i for i, note in enumerate(notes) if isinstance(note, Note)]
+    for note1_index, note2_index in zip(
+        note_indices[:-1], note_indices[1:], strict=True
+    ):
+        note1 = cast(Note, notes[note1_index])
+        note2 = cast(Note, notes[note2_index])
+        shifted_notes[note1_index] = Note(
+            note=note1.note,
+            kind=note1.kind,
+            velocity=note1.velocity,
+            time_delta_secs=note2.time_delta_secs,
         )
-    shifted_notes.append(
-        Note(
-            note=notes[-1].note,
-            kind=notes[-1].kind,
-            velocity=notes[-1].velocity,
-            time_delta_secs=0,
-        )
+    last_note = cast(Note, notes[note_indices[-1]])
+    shifted_notes[note_indices[-1]] = Note(
+        note=last_note.note,
+        kind=last_note.kind,
+        velocity=last_note.velocity,
+        time_delta_secs=0,
     )
     return shifted_notes
 
@@ -106,7 +118,7 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
     channels = []
     for channel in channel_tokens:
         assert channel.shape[1] == token_parsing.TOKEN_DIM
-        notes: list[Note] = []
+        notes: list[Note | KeySignature] = []
 
         note_buffer = None
         for index in range(channel.shape[0]):
@@ -147,6 +159,13 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
                 else:
                     logger.warning("Found pause without preceding note")
 
+            elif kind == "key_signature":
+                key = token_parsing.get_key_signature(channel[index])
+                notes.append(KeySignature(key=key))
+
+            else:
+                raise ValueError(kind)
+
         if note_buffer is not None:
             notes.append(note_buffer)
         channels.append(Channel(notes=notes, program_nums=[]))
@@ -154,22 +173,3 @@ def from_tokens(channel_tokens: list[np.ndarray]) -> Track:
         channels={i: c for i, c in enumerate(channels)},
         metadata=TrackMetadata(),
     )
-
-
-def _split_channels(messages: list[Message]) -> dict[int, list[Message]]:
-    channels = list(
-        set(message.channel for message in messages if hasattr(message, "channel"))
-    )
-    if channels == []:
-        channels = [0]
-    time_buffers = {channel: 0.0 for channel in channels}
-    result: dict[int, list[Message]] = {channel: [] for channel in channels}
-    for message in messages:
-        message_channel = getattr(message, "channel", channels[0])
-        for channel in channels:
-            if channel != message_channel:
-                time_buffers[channel] += message.time
-        message.time += time_buffers[message_channel]
-        time_buffers[message_channel] = 0.0
-        result[message_channel].append(message)
-    return result

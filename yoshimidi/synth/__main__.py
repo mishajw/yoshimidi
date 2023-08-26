@@ -2,7 +2,7 @@ import dataclasses
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterator, Literal
+from typing import Iterator, Literal, cast
 
 import fire
 import fluidsynth
@@ -15,7 +15,7 @@ from jaxtyping import Float
 from loguru import logger
 
 from yoshimidi.data.parse import one_hot_parsing, token_parsing
-from yoshimidi.data.parse.tracks import Channel, Note
+from yoshimidi.data.parse.tracks import Channel, KeySignature, Note
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints
 from yoshimidi.train.midi_activation import midi_activation
@@ -218,7 +218,9 @@ def _get_model_distribution(
     temperature: float,
 ) -> Float[np.ndarray, "note"]:
     notes = list(_key_presses_to_notes(resolved_key_presses, now))
-    tokens = token_parsing.from_channel(Channel(notes=notes, program_nums=[]))
+    tokens = token_parsing.from_channel(
+        Channel(notes=cast(list[Note | KeySignature], notes), program_nums=[])
+    )
     one_hots = one_hot_parsing.from_tokens(
         tokens, device=torch.device("cpu"), dtype=torch.float32
     )
