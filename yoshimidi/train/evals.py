@@ -25,7 +25,7 @@ def evaluate(
     data_loader_eval: DataLoader[torch.Tensor],
 ) -> LossValues:
     model.eval()
-    losses = []
+    losses: list[LossValues] = []
     for batch in tqdm.tqdm(data_loader_eval, desc="Evaluating"):
         logits = model(batch)
         losses.append(autoregressive_midi_loss(batch=batch, logits=logits))
@@ -35,4 +35,7 @@ def evaluate(
         note_on_loss=torch.stack([loss.note_on_loss for loss in losses]).mean(),
         note_off_loss=torch.stack([loss.note_off_loss for loss in losses]).mean(),
         time_loss=torch.stack([loss.time_loss for loss in losses]).mean(),
+        key_signature_loss=torch.stack(
+            [loss.key_signature_loss for loss in losses]
+        ).mean(),
     )
