@@ -101,10 +101,10 @@ def main(config_path: str) -> None:
         )
         metrics = {
             "loss/loss": loss_values.loss.item(),
-            "loss/kind": loss_values.kind_loss.item(),
+            "loss/time": loss_values.time_loss.item(),
             "loss/note_on": loss_values.note_on_loss.item(),
             "loss/note_off": loss_values.note_off_loss.item(),
-            "loss/time": loss_values.time_loss.item(),
+            "loss/end": loss_values.end_loss.item(),
             "loss/key_signature": loss_values.key_signature_loss.item(),
             "perf/time_per_batch_secs": time_per_batch_secs,
             "perf/flops": flops,
@@ -146,12 +146,14 @@ def main(config_path: str) -> None:
             if config.use_wandb:
                 wandb.log(
                     {
-                        "evals/loss/loss": eval_loss.loss.item(),
-                        "evals/loss/kind": eval_loss.kind_loss.item(),
-                        "evals/loss/note_on": eval_loss.note_on_loss.item(),
-                        "evals/loss/note_off": eval_loss.note_off_loss.item(),
-                        "evals/loss/time": eval_loss.time_loss.item(),
-                        "evals/loss/key_signature": eval_loss.key_signature_loss.item(),
+                        "evals/loss/loss": loss_values.loss.item(),
+                        "evals/loss/time": loss_values.time_loss.item(),
+                        "evals/loss/note_on": loss_values.note_on_loss.item(),
+                        "evals/loss/note_off": loss_values.note_off_loss.item(),
+                        "evals/loss/end": loss_values.end_loss.item(),
+                        "evals/loss/key_signature": (
+                            loss_values.key_signature_loss.item()
+                        ),
                     }
                 )
 

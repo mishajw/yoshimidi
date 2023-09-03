@@ -1,25 +1,22 @@
-from typing import Tuple, cast
+from typing import Literal, cast
 
 import numpy as np
 import torch
-from jaxtyping import Bool, Float, UInt8
+from jaxtyping import Float, UInt8
 
 from yoshimidi.data.parse import time_parsing, token_parsing
-from yoshimidi.data.parse.token_parsing import (
-    KINDS,
-    TOKEN_FIELDS,
-    KindType,
-    TokenFields,
-)
+from yoshimidi.data.parse.token_parsing import KINDS, TOKEN_FIELDS
 
-TOKEN_FIELD_LENGTHS: dict[TokenFields, int] = {
-    "kind": len(KINDS),
-    "note_on": 2**7 + 1,
-    "note_off": 2**7 + 1,
-    "time": time_parsing.NUM_TIME_SUPPORTS + 1,
-    "key_signature": len(token_parsing.KEY_SIGNATURES) + 1,
+OneHotRange = Literal["pause", "note_on", "note_off", "end", "key_signature"]
+ONE_HOT_RANGE_LENGTHS: dict[OneHotRange, int] = {
+    # Put pause first so we can one-hot the rest of the fields in one go.
+    "pause": time_parsing.NUM_TIME_SUPPORTS,
+    "note_on": 2**7,
+    "note_off": 2**7,
+    "end": 1,
+    "key_signature": len(token_parsing.KEY_SIGNATURES),
 }
-VOCAB = sum(TOKEN_FIELD_LENGTHS.values())
+VOCAB = sum(ONE_HOT_RANGE_LENGTHS.values())
 
 # jaxtyping
 seq, token, vocab = None, None, None
@@ -32,67 +29,63 @@ def from_tokens(
 ) -> Float[torch.Tensor, "seq vocab"]:  # noqa: F722
     input_tensor = torch.tensor(input, device=device, dtype=torch.int64)
     output = torch.zeros((input.shape[0], VOCAB), device=device, dtype=dtype)
-
-    start, end = piece_range("kind")
-    output[:, start:end] = torch.nn.functional.one_hot(
-        input_tensor[:, TOKEN_FIELDS.index("kind")],
-        num_classes=TOKEN_FIELD_LENGTHS["kind"],
-    )
-
-    start, end = piece_range("note_on")
-    output[:, start:end] = torch.nn.functional.one_hot(
-        _get_classes_with_none(input_tensor, "on", "note_on"),
-        num_classes=TOKEN_FIELD_LENGTHS["note_on"],
-    )
-
-    start, end = piece_range("note_off")
-    output[:, start:end] = torch.nn.functional.one_hot(
-        _get_classes_with_none(input_tensor, "off", "note_off"),
-        num_classes=TOKEN_FIELD_LENGTHS["note_off"],
-    )
-
-    start, end = piece_range("time")
+    pause_start, pause_end = 0, ONE_HOT_RANGE_LENGTHS["pause"]
     for seq_index in range(input_tensor.shape[0]):
-        if input_tensor[seq_index, TOKEN_FIELDS.index("kind")] == KINDS.index("pause"):
-            # If we're not in a pause field, we "one hot" by setting the first bit.
-            # Otherwise, we bias predictions towards zero.
-            output[seq_index, start] = 1
+        if input_tensor[seq_index, TOKEN_FIELDS.index("kind")] != KINDS.index("pause"):
             continue
         time_parsing.time_uint8_to_support(
             cast(int, input_tensor[seq_index, TOKEN_FIELDS.index("time")].item()),
-            output[seq_index, start + 1 : end],
+            output[seq_index, pause_start:pause_end],
         )
-
-    start, end = piece_range("key_signature")
-    output[:, start:end] = torch.nn.functional.one_hot(
-        _get_classes_with_none(input_tensor, "key_signature", "key_signature"),
-        num_classes=TOKEN_FIELD_LENGTHS["key_signature"],
+    output[:, ONE_HOT_RANGE_LENGTHS["pause"] :] = _fill_non_pause_fields(
+        input_tensor, device
     )
     return output
 
 
-def _get_classes_with_none(
-    input_tensor: UInt8[torch.Tensor, "seq token"],  # noqa: F722
-    kind: KindType,
-    token_field: TokenFields,
+def _fill_non_pause_fields(
+    input: UInt8[torch.Tensor, "seq token"],  # noqa: F722
+    device: torch.device,
 ) -> torch.Tensor:
-    """
-    Gets the classes for a given kind.
+    non_pause_tokens = torch.zeros((input.shape[0]), device=device, dtype=torch.int64)
+    indices_used = 0
 
-    Used for classes that don't always exist: for example, we don't have a note-on field
-    for a pause. Therefore, when the kind is not occupied, we return a class of zero.
-    """
-    is_kind: Bool[torch.Tensor, "seq"] = input_tensor[
-        :, TOKEN_FIELDS.index("kind")
-    ] == KINDS.index(kind)
-    kind_values = input_tensor[:, TOKEN_FIELDS.index(token_field)]
-    return is_kind.to(dtype=torch.uint8) + kind_values
+    on_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("on")
+    non_pause_tokens[on_mask] = (
+        input[on_mask, TOKEN_FIELDS.index("note_on")] + indices_used
+    )
+    indices_used += ONE_HOT_RANGE_LENGTHS["note_on"]
+
+    off_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("off")
+    non_pause_tokens[off_mask] = (
+        input[off_mask, TOKEN_FIELDS.index("note_off")] + indices_used
+    )
+    indices_used += ONE_HOT_RANGE_LENGTHS["note_off"]
+
+    end_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("end")
+    non_pause_tokens[end_mask] = indices_used
+    indices_used += ONE_HOT_RANGE_LENGTHS["end"]
+
+    key_signature_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index(
+        "key_signature"
+    )
+    print("ksm", key_signature_mask.sum())
+    non_pause_tokens[key_signature_mask] = (
+        input[key_signature_mask, TOKEN_FIELDS.index("key_signature")] + indices_used
+    )
+    indices_used += ONE_HOT_RANGE_LENGTHS["key_signature"]
+
+    assert indices_used == VOCAB - ONE_HOT_RANGE_LENGTHS["pause"], indices_used
+    return torch.nn.functional.one_hot(
+        non_pause_tokens,
+        num_classes=indices_used,
+    )
 
 
-def piece_range(token_field: TokenFields) -> Tuple[int, int]:
+def piece_range(one_hot_range: OneHotRange) -> tuple[int, int]:
     index = 0
-    for tf, length in TOKEN_FIELD_LENGTHS.items():
-        if tf == token_field:
+    for ohr, length in ONE_HOT_RANGE_LENGTHS.items():
+        if ohr == one_hot_range:
             return index, index + length
         index += length
-    raise ValueError(token_field)
+    raise ValueError(one_hot_range)
