@@ -15,7 +15,7 @@ from loguru import logger
 from mido import MidiFile
 
 from yoshimidi.data.parse import track_parsing
-from yoshimidi.data.parse.tracks import Track
+from yoshimidi.data.parse.tracks import KeySignature, Track
 from yoshimidi.output_config import OutputConfig
 
 _LAKH_MIDI_DATASET_URL = "http://hog.ee.columbia.edu/craffel/lmd/lmd_full.tar.gz"
@@ -66,9 +66,9 @@ def _parse_data_multiprocessing(
                 counters[counter_name] += counter_value
             pbar.set_postfix(
                 file=counters["successful_files"],
-                track=counters["successful_tracks"],
                 chans=counters["successful_channels"],
                 note=counters["successful_notes"],
+                sigs=counters["successful_key_signatures"],
             )
     logger.info("Counters:")
     for counter_name, counter_value in counters.items():
@@ -88,10 +88,16 @@ def _parse_midi_path(path: pathlib.Path) -> "_ParseResult":
     if track is None:
         counters["bad_track"] += 1
         return _ParseResult(track=None, counters=counters)
-    counters["successful_tracks"] += 1
+    counters["successful_files"] += 1
     counters["successful_channels"] += len(track.channels)
     counters["successful_notes"] += sum(
         len(channel.notes) for channel in track.channels.values()
+    )
+    counters["successful_key_signatures"] += sum(
+        1
+        for channel in track.channels.values()
+        for note in channel.notes
+        if isinstance(note, KeySignature)
     )
     return _ParseResult(track=track, counters=counters)
 

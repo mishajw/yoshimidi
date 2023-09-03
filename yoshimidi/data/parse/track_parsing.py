@@ -36,6 +36,11 @@ def from_midi(
                 logger.warning(f"Found stop message: {message}")
             return None
         cum_secs += message.time
+        if message.type == "key_signature":
+            # TODO: Handle updating channel_cum_secs. Ignoring it for now is fine.
+            for channel in channels.values():
+                channel.notes.append(KeySignature(key=message.key))
+            continue
         if not hasattr(message, "channel"):
             continue
         message_channel_delta_secs = cum_secs - channel_cum_secs[message.channel]
