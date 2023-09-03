@@ -61,7 +61,6 @@ def _parse_data_multiprocessing(
         results = pool.imap_unordered(_parse_midi_path, midi_files)
         pbar = tqdm.tqdm(results, desc="Parsing files", total=len(midi_files))
         for result in pbar:
-            f.write(msgspec.json.encode(result.track) + b"\n")
             for counter_name, counter_value in result.counters.items():
                 counters[counter_name] += counter_value
             pbar.set_postfix(
@@ -70,6 +69,9 @@ def _parse_data_multiprocessing(
                 note=counters["successful_notes"],
                 sigs=counters["successful_key_signatures"],
             )
+            if result.track is None:
+                continue
+            f.write(msgspec.json.encode(result.track) + b"\n")
     logger.info("Counters:")
     for counter_name, counter_value in counters.items():
         logger.info("{}: {}", counter_name, counter_value)

@@ -9,6 +9,7 @@ import msgspec
 import numpy as np
 import tqdm
 from jaxtyping import Float
+from loguru import logger
 
 from yoshimidi.data.parse import token_parsing
 from yoshimidi.data.parse.tracks import Channel, Track
@@ -64,17 +65,28 @@ def main(
     ), f"input_file does not exist: {config.dataset_parsed}"
     config.dataset_tokenized.mkdir(parents=True, exist_ok=True)
 
-    with config.dataset_parsed.open("r") as f:
-        _tokenize(
-            channels=(
-                channel
-                for line in f
-                for channel in msgspec.json.decode(line, type=Track).channels.values()
-                if len(channel.notes) > 0
-            ),
-            output_dir=config.dataset_tokenized,
-            lines_per_file=lines_per_file,
-        )
+    def _channels_iter() -> Iterable[Channel]:
+        logger.info("Finding size of parse dataset for ETA...")
+        with config.dataset_parsed.open("r") as f:
+            num_lines = sum(1 for _ in f)
+        logger.info("Found {} tracks", num_lines)
+
+        with config.dataset_parsed.open("r") as f:
+            for line in tqdm.tqdm(f, desc="Tokenizing tracks", total=num_lines):
+                try:
+                    track = msgspec.json.decode(line, type=Track)
+                except msgspec.ValidationError as e:
+                    logger.error("Error decoding line: {}", line)
+                    raise e
+                for channel in track.channels.values():
+                    if len(channel.notes) > 0:
+                        yield channel
+
+    _tokenize(
+        channels=_channels_iter(),
+        output_dir=config.dataset_tokenized,
+        lines_per_file=lines_per_file,
+    )
 
 
 def _tokenize(
@@ -89,12 +101,10 @@ def _tokenize(
         lines_per_file=lines_per_file,
     )
     state.open_mmap()
-    pbar = tqdm.tqdm(channels, desc="Tokenizing channels")
-    for channel in pbar:
+    for channel in channels:
         channel_lines, _ = token_parsing.get_buffer_size(channel)
         token_parsing.from_channel_to_buffer(channel, state.get_slice(channel_lines))
         state.register_lines_written(channel_lines)
-        pbar.set_postfix(idx=state.index, lines=state.written_lines)
     state.write_end_indices()
 
 
