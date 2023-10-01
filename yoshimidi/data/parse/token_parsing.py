@@ -31,6 +31,7 @@ KEY_SIGNATURES = list(
         "Bb",
         "C",
         "C#",
+        "Cb",
         "D",
         "D#",
         "Db",
