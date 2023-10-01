@@ -45,7 +45,7 @@ def run_inference(
 
         elif kind == "on":
             lower, upper = one_hot_parsing.piece_range("note_on")
-            note = _sample(activations[lower:upper])
+            note = _sample(activations[lower + 1 : upper])
             note_buffer = Note(
                 note=note,
                 kind="on",
@@ -56,7 +56,8 @@ def run_inference(
 
         elif kind == "off":
             lower, upper = one_hot_parsing.piece_range("note_off")
-            note = _sample(activations[lower:upper])
+            # print(activations[lower:upper])
+            note = _sample(activations[lower + 1 : upper])
             note_buffer = Note(
                 note=note,
                 kind="off",
@@ -67,7 +68,8 @@ def run_inference(
 
         elif kind == "pause":
             lower, upper = one_hot_parsing.piece_range("time")
-            time_support = activations[lower:upper]
+            time_support = activations[lower + 1 : upper]
+            print(logits[0, -1, lower:upper])
             # TODO: How can we best sample from the time distribution?
             time_support_one_hot = torch.zeros_like(time_support)
             time_support_one_hot[_sample(time_support)] = 1

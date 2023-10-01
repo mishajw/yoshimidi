@@ -2,10 +2,11 @@ import dataclasses
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterator, Literal, cast
+from typing import Iterable, Iterator, Literal, cast
 
 import fire
 import fluidsynth
+import mido
 import numpy as np
 import pygame
 import pygame.locals
@@ -65,7 +66,11 @@ def main(
     pygame.font.init()
     font = pygame.font.SysFont("Arial", 20)
 
-    synth = fluidsynth.Synth(gain=1.0)
+    synth = fluidsynth.Synth(gain=2.0, samplerate=44100 // 4)
+    synth.setting("audio.driver", "portaudio")
+    synth.setting("audio.periods", 2)
+    synth.setting("audio.realtime-prio", 99)
+    synth.setting("audio.period-size", 64)
     synth.start()
     synth_soundfont = synth.sfload(soundfont_path)
     synth.program_select(0, synth_soundfont, 0, 0)
@@ -89,29 +94,7 @@ def main(
     )
 
     resolved_key_presses: list[ResolvedKeyPress] = []
-    pygame.event.clear()
-    while True:
-        event = pygame.event.wait()
-        key_press = None
-        now = datetime.now()
-        if event.type == pygame.locals.QUIT:
-            break
-        elif event.type == pygame.locals.KEYDOWN and event.key in SYNTH_KEYS:
-            key_press = KeyPress(
-                key_index=SYNTH_KEYS.index(event.key),
-                type="on",
-                time=now,
-            )
-        elif event.type == pygame.locals.KEYUP and event.key in SYNTH_KEYS:
-            key_press = KeyPress(
-                key_index=SYNTH_KEYS.index(event.key),
-                type="off",
-                time=now,
-            )
-
-        if key_press is None:
-            continue
-
+    for key_press in _midi_key_events():
         if key_press.type == "off":
             resolved_note = next(
                 kp.resolved_note
@@ -130,7 +113,7 @@ def main(
             model_distribution = _get_model_distribution(
                 model,
                 resolved_key_presses,
-                now,
+                key_press.time,
                 temperature=temperature,
             )
             position_distribution = _get_position_distribution(
@@ -138,7 +121,6 @@ def main(
             )
             constraint_distribution = _get_constraint_distribution(
                 key_press=key_press,
-                now=now,
                 resolved_key_presses=resolved_key_presses,
             )
             currently_playing_distribution = _get_currently_playing_distribution(
@@ -168,13 +150,14 @@ def main(
             pygame.display.flip()
             assert np.all(distribution >= 0)
             resolved_note = int(chosen_distribution.argmax())
+            # resolved_note = key_press.key_index
             resolved_key_presses.append(
                 ResolvedKeyPress(
                     **dataclasses.asdict(key_press),
                     resolved_note=resolved_note,
                 )
             )
-            synth.noteon(0, resolved_note, 100)
+            synth.noteon(0, resolved_note, key_press.velocity)
     logger.info("Quitting...")
     pygame.quit()
     synth.delete()
@@ -185,11 +168,57 @@ class KeyPress:
     key_index: int
     type: Literal["on", "off"]
     time: datetime
+    velocity: int
 
 
 @dataclass
 class ResolvedKeyPress(KeyPress):
     resolved_note: int
+
+
+def _keyboard_key_events() -> Iterable[KeyPress]:
+    pygame.event.clear()
+    while True:
+        event = pygame.event.wait()
+        now = datetime.now()
+        if event.type == pygame.locals.QUIT:
+            break
+        elif event.type == pygame.locals.KEYDOWN and event.key in SYNTH_KEYS:
+            yield KeyPress(
+                key_index=SYNTH_KEYS.index(event.key),
+                type="on",
+                time=now,
+                velocity=127,
+            )
+        elif event.type == pygame.locals.KEYUP and event.key in SYNTH_KEYS:
+            yield KeyPress(
+                key_index=SYNTH_KEYS.index(event.key),
+                type="off",
+                time=now,
+                velocity=0,
+            )
+
+
+def _midi_key_events() -> Iterable[KeyPress]:
+    with mido.open_input(mido.get_input_names()[2]) as midi_input:
+        for message in midi_input:
+            now = datetime.now()
+            if message.type == "note_on" and message.velocity > 0:
+                yield KeyPress(
+                    key_index=message.note,
+                    type="on",
+                    time=now,
+                    velocity=int(min(message.velocity * 1.5, 127)),
+                )
+            elif message.type == "note_off" or (
+                message.type == "note_on" and message.velocity == 0
+            ):
+                yield KeyPress(
+                    key_index=message.note,
+                    type="off",
+                    time=now,
+                    velocity=0,
+                )
 
 
 def _key_presses_to_notes(
@@ -224,6 +253,8 @@ def _get_model_distribution(
     one_hots = one_hot_parsing.from_tokens(
         tokens, device=torch.device("cpu"), dtype=torch.float32
     )
+    if one_hots.size(0) > 128:
+        one_hots = one_hots[-128:, :]
     logits = model(one_hots.unsqueeze(0))
     logits /= temperature
     lower, upper = one_hot_parsing.piece_range("note_on")
@@ -235,22 +266,21 @@ def _get_model_distribution(
 def _get_position_distribution(
     key_press: KeyPress,
 ) -> np.ndarray:
-    note = key_press.key_index + 40
-    distribution = scipy.stats.norm.pdf(list(range(NUM_NOTES)), loc=note, scale=10)
+    note = key_press.key_index
+    distribution = scipy.stats.norm.pdf(list(range(NUM_NOTES)), loc=note, scale=5)
     return distribution / distribution.sum()
 
 
 def _get_constraint_distribution(
     key_press: KeyPress,
-    now: datetime,
     resolved_key_presses: list[ResolvedKeyPress],
 ) -> np.ndarray:
     distribution = np.ones(NUM_NOTES)
     for resolved_key_press in resolved_key_presses:
         if resolved_key_press.type == "off":
             continue
-        time_since_secs = (now - resolved_key_press.time).total_seconds()
-        weight = min(1, math.exp(-time_since_secs + 5))
+        time_since_secs = (key_press.time - resolved_key_press.time).total_seconds()
+        weight = min(1, math.exp(-time_since_secs + 0))
         key_distribution = np.ones(NUM_NOTES)
         if key_press.key_index > resolved_key_press.key_index:
             key_distribution[: resolved_key_press.resolved_note + 1] = 1 - weight
