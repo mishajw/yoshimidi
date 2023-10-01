@@ -53,7 +53,7 @@ tokenize:
 
 .PHONY: train
 train:
-	poetry run python yoshimidi/clis/train.py configs/train.toml
+	poetry run python yoshimidi/clis/train.py $(TRAIN_CONFIG)
 
 # S3
 # ==
