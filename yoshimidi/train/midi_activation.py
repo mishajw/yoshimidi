@@ -10,10 +10,11 @@ def midi_activation(
 ) -> Float[Tensor, "batch seq vocab"]:  # noqa: F722
     results = []
     index = 0
-    for piece_length in TOKEN_FIELD_LENGTHS.values():
+    for piece, piece_length in TOKEN_FIELD_LENGTHS.items():
+        increment = 0 if piece == "kind" else 1
         results.append(
             torch.nn.functional.softmax(
-                logits[:, :, index : index + piece_length], dim=2
+                logits[:, :, index + increment : index + piece_length], dim=2
             )
         )
         index += piece_length
