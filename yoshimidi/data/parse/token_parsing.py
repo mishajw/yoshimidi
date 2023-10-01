@@ -147,6 +147,7 @@ def create_end_token(mmap: UInt8[np.ndarray, "token"]) -> None:
 
 
 def create_key_signature_token(mmap: UInt8[np.ndarray, "token"], key: str) -> None:
+    key = key.strip()
     mmap[TOKEN_FIELDS.index("kind")] = KINDS.index("key_signature")
-    assert key in KEY_SIGNATURES, key
+    assert key in KEY_SIGNATURES, repr(key)
     mmap[TOKEN_FIELDS.index("key_signature")] = KEY_SIGNATURES.index(key)
