@@ -62,11 +62,11 @@ train:
 s3-upload-dataset:
 	s5cmd sync \
 		out/dataset/03_tokenized/ \
-		's3://yoshimidi-v2/datasets/2023-08-03/'
+		's3://yoshimidi-v2/datasets/2023-09-03/'
 .PHONY: s3-download-dataset
 s3-download-dataset:
 	s5cmd sync \
-		's3://yoshimidi-v2/datasets/2023-08-03/*' \
+		's3://yoshimidi-v2/datasets/2023-09-03/*' \
 		out/dataset/03_tokenized/
 
 .PHONY: s3-upload-checkpoints
