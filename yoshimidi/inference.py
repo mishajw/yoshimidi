@@ -34,7 +34,7 @@ def run_inference(
         logits /= temperature
         activations = midi_activation(logits)[0, -1, :]
 
-        token = token_parsing.from_one_hot(_sample(activations), activations)
+        token = one_hot_parsing.to_token(_sample(activations), activations)
         kind = token_parsing.get_kind(token)
 
         if note_buffer is not None and kind != "pause":

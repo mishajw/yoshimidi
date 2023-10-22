@@ -4,12 +4,20 @@ import numpy as np
 import torch
 from jaxtyping import Float, UInt8
 
-from yoshimidi.data.parse import time_parsing, token_parsing
+from yoshimidi.data.parse import time_parsing
 from yoshimidi.data.parse.token_parsing import (
+    DTYPE,
+    KEY_SIGNATURES,
     KINDS,
+    TOKEN_DIM,
     TOKEN_FIELDS,
     KindType,
     TokenFields,
+    create_end_token,
+    create_key_signature_token,
+    create_note_off_token,
+    create_note_on_token,
+    create_pause_token,
 )
 
 OneHotRange = Literal["pause", "note_on", "note_off", "end", "key_signature"]
@@ -19,7 +27,7 @@ ONE_HOT_RANGE_LENGTHS: dict[OneHotRange, int] = {
     "note_on": 2**7,
     "note_off": 2**7,
     "end": 1,
-    "key_signature": len(token_parsing.KEY_SIGNATURES),
+    "key_signature": len(KEY_SIGNATURES),
 }
 VOCAB = sum(ONE_HOT_RANGE_LENGTHS.values())
 
@@ -98,3 +106,28 @@ def get_one_hot_range(index: int) -> OneHotRange:
         if start <= index < end:
             return one_hot_range
     raise ValueError(index)
+
+
+def to_token(
+    index: int,
+    probs: Float[torch.Tensor, "token"],
+) -> UInt8[np.ndarray, "token"]:  # noqa: F722
+    one_hot_range = get_one_hot_range(index)
+    start, end = piece_range(one_hot_range)
+    relative_index = index - start
+    result = np.zeros(TOKEN_DIM, dtype=DTYPE)
+    if one_hot_range == "note_on":
+        create_note_on_token(result, note=relative_index)
+    elif one_hot_range == "note_off":
+        create_note_off_token(result, note=relative_index)
+    elif one_hot_range == "key_signature":
+        create_key_signature_token(result, key=KEY_SIGNATURES[relative_index])
+    elif one_hot_range == "end":
+        create_end_token(result)
+    elif one_hot_range == "pause":
+        time_uint8 = time_parsing.time_uint8_from_support(probs[start:end])
+        time_delta_secs = time_parsing.time_from_uint8(time_uint8)
+        create_pause_token(result, time_delta_secs=time_delta_secs)
+    else:
+        raise ValueError(one_hot_range)
+    return result

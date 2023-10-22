@@ -1,11 +1,9 @@
 from typing import Literal, TypeAlias
 
 import numpy as np
-import torch
-from jaxtyping import Float, UInt8
+from jaxtyping import UInt8
 
 from yoshimidi.data.parse import time_parsing
-from yoshimidi.data.parse.one_hot_parsing import get_one_hot_range, piece_range
 from yoshimidi.data.parse.tracks import Channel, KeySignature, Note
 
 TokenFields: TypeAlias = Literal["kind", "note_on", "note_off", "time", "key_signature"]
@@ -85,31 +83,6 @@ def from_channel_to_buffer(
     create_end_token(output[index])
     index += 1
     assert index == output.shape[0], (index, output.shape[0])
-
-
-def from_one_hot(
-    index: int,
-    probs: Float[torch.Tensor, "token"],
-) -> UInt8[np.ndarray, "token"]:  # noqa: F722
-    one_hot_range = get_one_hot_range(index)
-    start, end = piece_range(one_hot_range)
-    relative_index = index - start
-    result = np.zeros(TOKEN_DIM, dtype=DTYPE)
-    if one_hot_range == "note_on":
-        create_note_on_token(result, note=relative_index)
-    elif one_hot_range == "note_off":
-        create_note_off_token(result, note=relative_index)
-    elif one_hot_range == "key_signature":
-        create_key_signature_token(result, key=KEY_SIGNATURES[relative_index])
-    elif one_hot_range == "end":
-        create_end_token(result)
-    elif one_hot_range == "pause":
-        time_uint8 = time_parsing.time_uint8_from_support(probs[start:end])
-        time_delta_secs = time_parsing.time_from_uint8(time_uint8)
-        create_pause_token(result, time_delta_secs=time_delta_secs)
-    else:
-        raise ValueError(one_hot_range)
-    return result
 
 
 def get_buffer_size(channel: Channel) -> tuple[int, int]:

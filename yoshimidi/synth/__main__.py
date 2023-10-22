@@ -48,7 +48,7 @@ SYNTH_KEYS = [
     pygame.locals.K_QUOTE,
     pygame.locals.K_RIGHTBRACKET,
 ]
-NUM_NOTES = one_hot_parsing.TOKEN_FIELD_LENGTHS["note_on"]
+NUM_NOTES = one_hot_parsing.ONE_HOT_RANGE_LENGTHS["note_on"]
 
 # jaxtyping
 note = None
@@ -59,7 +59,7 @@ def main(
     *,
     model_tag: str,
     soundfont_path: str,
-    temperature: float = 0.5,
+    temperature: float = 0.1,
 ) -> None:
     pygame.init()
     screen = pygame.display.set_mode((500, 500))
@@ -94,7 +94,8 @@ def main(
     )
 
     resolved_key_presses: list[ResolvedKeyPress] = []
-    for key_press in _midi_key_events():
+    # for key_press in _midi_key_events():
+    for key_press in _keyboard_key_events():
         if key_press.type == "off":
             resolved_note = next(
                 kp.resolved_note
@@ -200,7 +201,7 @@ def _keyboard_key_events() -> Iterable[KeyPress]:
 
 
 def _midi_key_events() -> Iterable[KeyPress]:
-    with mido.open_input(mido.get_input_names()[2]) as midi_input:
+    with mido.open_input(mido.get_input_names()[1]) as midi_input:
         for message in midi_input:
             now = datetime.now()
             if message.type == "note_on" and message.velocity > 0:
@@ -266,7 +267,7 @@ def _get_model_distribution(
 def _get_position_distribution(
     key_press: KeyPress,
 ) -> np.ndarray:
-    note = key_press.key_index
+    note = key_press.key_index + 60
     distribution = scipy.stats.norm.pdf(list(range(NUM_NOTES)), loc=note, scale=5)
     return distribution / distribution.sum()
 
@@ -280,7 +281,7 @@ def _get_constraint_distribution(
         if resolved_key_press.type == "off":
             continue
         time_since_secs = (key_press.time - resolved_key_press.time).total_seconds()
-        weight = min(1, math.exp(-time_since_secs + 0))
+        weight = min(1, math.exp(-time_since_secs + 3))
         key_distribution = np.ones(NUM_NOTES)
         if key_press.key_index > resolved_key_press.key_index:
             key_distribution[: resolved_key_press.resolved_note + 1] = 1 - weight
