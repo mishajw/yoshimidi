@@ -18,11 +18,6 @@ class LossAndStats:
 
     loss: torch.Tensor
     range_stats: dict[one_hot_parsing.OneHotRange, LossStat]
-    # time: LossStat
-    # note_on: LossStat
-    # note_off: LossStat
-    # end: LossStat
-    # key_signature: LossStat
 
 
 def autoregressive_midi_loss(

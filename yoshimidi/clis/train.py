@@ -55,15 +55,6 @@ def main(config_path: str) -> None:
             config=config.model_dump(),
         )
 
-    logger.debug("Loading model")
-    model = Transformer(config.transformer).to(
-        device=config.training.torch_device(), dtype=config.training.torch_dtype()
-    )
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.training.learning_rate)
-    logger.debug(
-        f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
-    )
-
     logger.debug("Loading dataset")
     dataset = MidiDataset.from_path(
         config.output.dataset_tokenized,
@@ -87,6 +78,19 @@ def main(config_path: str) -> None:
     logger.debug(f"Num batches: {len(data_loader_train):.2E}")
     logger.debug(f"Num batches (eval): {len(data_loader_eval):.2E}")
 
+    logger.debug("Loading model")
+    model = Transformer(config.transformer).to(
+        device=config.training.torch_device(), dtype=config.training.torch_dtype()
+    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.training.learning_rate)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=optimizer,
+        T_max=len(data_loader_train),
+    )
+    logger.debug(
+        f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
+    )
+
     bar = tqdm.tqdm(data_loader_train, desc="Training")
     for step, batch in enumerate(bar):
         model.train()
@@ -100,8 +104,10 @@ def main(config_path: str) -> None:
         flops = calculate_flops(
             config.transformer, config.training, time_per_batch_secs
         )
+        (lr,) = lr_scheduler.get_last_lr()
         metrics: dict[str, float] = {
             "loss/loss": loss_and_stats.loss.item(),
+            "lr": lr,
             # Perf:
             "perf/time_per_batch_secs": time_per_batch_secs,
             "perf/flops": flops,
@@ -171,6 +177,8 @@ def main(config_path: str) -> None:
                         }
                     )
                 wandb.log(eval_metrics)
+
+        lr_scheduler.step()
 
 
 if __name__ == "__main__":
