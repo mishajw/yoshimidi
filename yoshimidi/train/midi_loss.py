@@ -30,8 +30,8 @@ def autoregressive_midi_loss(
     batch: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
     logits: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
 ) -> LossAndStats:
-    labels = batch[:, 1:, :]
-    logits = logits[:, :-1, :]
+    labels = batch[:, 1:, :].transpose(1, 2)
+    logits = logits[:, :-1, :].transpose(1, 2)
 
     range_stats: dict[one_hot_parsing.OneHotRange, LossAndStats.LossStat] = dict()
     for one_hot_range in one_hot_parsing.ONE_HOT_RANGE_LENGTHS:
@@ -61,18 +61,18 @@ def autoregressive_midi_loss(
 
 
 def _reduce_to_range(t: torch.Tensor, start: int, end: int) -> torch.Tensor:
-    non_range_sum = t[:, :, end:].sum(dim=2) + t[:, :, :start].sum(dim=2)
+    non_range_sum = t[:, end:, :].sum(dim=1) + t[:, :start, :].sum(dim=1)
     return torch.concat(
-        [t[:, :, start:end], non_range_sum.unsqueeze(2)],
-        dim=2,
+        [t[:, start:end, :], non_range_sum.unsqueeze(1)],
+        dim=1,
     )
 
 
 def _entropy(logits: torch.Tensor) -> torch.Tensor:
-    mean_probs = torch.nn.functional.softmax(logits, dim=2).mean(dim=(0, 1))
+    mean_probs = torch.nn.functional.softmax(logits, dim=1).mean(dim=(0, 2))
     return -torch.sum(mean_probs * torch.log(mean_probs + 1e-9))
 
 
 def _num_in_range(t: torch.Tensor, start: int, end: int) -> torch.Tensor:
-    in_range = (t.argmax(dim=2) >= start) & (t.argmax(dim=2) < end)
+    in_range = (t.argmax(dim=1) >= start) & (t.argmax(dim=1) < end)
     return in_range.float().mean()
