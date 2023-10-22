@@ -90,3 +90,11 @@ def piece_range(one_hot_range: OneHotRange) -> tuple[int, int]:
             return index, index + length
         index += length
     raise ValueError(one_hot_range)
+
+
+def get_one_hot_range(index: int) -> OneHotRange:
+    for one_hot_range in ONE_HOT_RANGE_LENGTHS:
+        start, end = piece_range(one_hot_range)
+        if start <= index < end:
+            return one_hot_range
+    raise ValueError(index)
