@@ -100,7 +100,7 @@ def main(config_path: str) -> None:
         flops = calculate_flops(
             config.transformer, config.training, time_per_batch_secs
         )
-        metrics = {
+        metrics: dict[str, float] = {
             "loss/loss": loss_and_stats.loss.item(),
             # Perf:
             "perf/time_per_batch_secs": time_per_batch_secs,

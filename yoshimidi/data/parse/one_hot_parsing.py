@@ -1,11 +1,16 @@
-from typing import Literal, cast
+from typing import Literal, Optional, cast
 
 import numpy as np
 import torch
 from jaxtyping import Float, UInt8
 
 from yoshimidi.data.parse import time_parsing, token_parsing
-from yoshimidi.data.parse.token_parsing import KINDS, TOKEN_FIELDS
+from yoshimidi.data.parse.token_parsing import (
+    KINDS,
+    TOKEN_FIELDS,
+    KindType,
+    TokenFields,
+)
 
 OneHotRange = Literal["pause", "note_on", "note_off", "end", "key_signature"]
 ONE_HOT_RANGE_LENGTHS: dict[OneHotRange, int] = {
@@ -29,7 +34,8 @@ def from_tokens(
 ) -> Float[torch.Tensor, "seq vocab"]:  # noqa: F722
     input_tensor = torch.tensor(input, device=device, dtype=torch.int64)
     output = torch.zeros((input.shape[0], VOCAB), device=device, dtype=dtype)
-    pause_start, pause_end = 0, ONE_HOT_RANGE_LENGTHS["pause"]
+    pause_start, pause_end = piece_range("pause")
+    assert pause_start == 0, pause_start
     for seq_index in range(input_tensor.shape[0]):
         if input_tensor[seq_index, TOKEN_FIELDS.index("kind")] != KINDS.index("pause"):
             continue
@@ -50,35 +56,31 @@ def _fill_non_pause_fields(
     non_pause_tokens = torch.zeros((input.shape[0]), device=device, dtype=torch.int64)
     indices_used = 0
 
-    on_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("on")
-    non_pause_tokens[on_mask] = (
-        input[on_mask, TOKEN_FIELDS.index("note_on")] + indices_used
-    )
-    indices_used += ONE_HOT_RANGE_LENGTHS["note_on"]
-
-    off_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("off")
-    non_pause_tokens[off_mask] = (
-        input[off_mask, TOKEN_FIELDS.index("note_off")] + indices_used
-    )
-    indices_used += ONE_HOT_RANGE_LENGTHS["note_off"]
-
-    end_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index("end")
-    non_pause_tokens[end_mask] = indices_used
-    indices_used += ONE_HOT_RANGE_LENGTHS["end"]
-
-    key_signature_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index(
-        "key_signature"
-    )
-    non_pause_tokens[key_signature_mask] = (
-        input[key_signature_mask, TOKEN_FIELDS.index("key_signature")] + indices_used
-    )
-    indices_used += ONE_HOT_RANGE_LENGTHS["key_signature"]
-
+    mappings: list[tuple[KindType, OneHotRange, Optional[TokenFields]]] = [
+        ("on", "note_on", "note_on"),
+        ("off", "note_off", "note_off"),
+        ("end", "end", None),
+        ("key_signature", "key_signature", "key_signature"),
+    ]
+    for kind, one_hot_range, token_field in mappings:
+        mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index(kind)
+        if token_field is not None:
+            non_pause_tokens[mask] = (
+                input[mask, TOKEN_FIELDS.index(token_field)] + indices_used
+            )
+        else:
+            non_pause_tokens[mask] = indices_used
+        indices_used += ONE_HOT_RANGE_LENGTHS[one_hot_range]
     assert indices_used == VOCAB - ONE_HOT_RANGE_LENGTHS["pause"], indices_used
-    return torch.nn.functional.one_hot(
+    non_pause_tokens = torch.nn.functional.one_hot(
         non_pause_tokens,
         num_classes=indices_used,
     )
+    pause_mask: torch.Tensor = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index(
+        "pause"
+    )
+    non_pause_tokens[pause_mask] = 0
+    return non_pause_tokens
 
 
 def piece_range(one_hot_range: OneHotRange) -> tuple[int, int]:
