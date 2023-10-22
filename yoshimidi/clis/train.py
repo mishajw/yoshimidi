@@ -4,6 +4,7 @@ import dotenv
 import fire
 import toml
 import torch
+import torch.utils.data
 import tqdm
 import wandb
 from loguru import logger
@@ -92,22 +93,19 @@ def main(config_path: str) -> None:
         optimizer.zero_grad()
         start_time = datetime.now()
         logits = model(batch)
-        loss_values = autoregressive_midi_loss(batch=batch, logits=logits)
-        loss_values.loss.backward()
+        loss_and_stats = autoregressive_midi_loss(batch=batch, logits=logits)
+        loss_and_stats.loss.backward()
         optimizer.step()
         time_per_batch_secs = (datetime.now() - start_time).total_seconds()
         flops = calculate_flops(
             config.transformer, config.training, time_per_batch_secs
         )
         metrics = {
-            "loss/loss": loss_values.loss.item(),
-            "loss/time": loss_values.time_loss.item(),
-            "loss/note_on": loss_values.note_on_loss.item(),
-            "loss/note_off": loss_values.note_off_loss.item(),
-            "loss/end": loss_values.end_loss.item(),
-            "loss/key_signature": loss_values.key_signature_loss.item(),
+            "loss/loss": loss_and_stats.loss.item(),
+            # Perf:
             "perf/time_per_batch_secs": time_per_batch_secs,
             "perf/flops": flops,
+            # Norms:
             **{
                 f"norms/{name}": param.norm().item()
                 for name, param in model.named_parameters()
@@ -119,6 +117,16 @@ def main(config_path: str) -> None:
                 for name, param in model.named_parameters()
             },
         }
+        for loss_name, loss_values in loss_and_stats.range_stats.items():
+            metrics[f"loss/values/{loss_name}"] = loss_values.value.item()
+            metrics[f"loss/entropy/{loss_name}"] = loss_values.entropy.item()
+            metrics[
+                f"loss/target_entropy/{loss_name}"
+            ] = loss_values.target_entropy.item()
+            metrics[
+                f"loss/num_predicted/{loss_name}"
+            ] = loss_values.num_predicted.item()
+            metrics[f"loss/num_target/{loss_name}"] = loss_values.num_target.item()
         bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
         if config.use_wandb:
             wandb.log(metrics)
@@ -136,26 +144,33 @@ def main(config_path: str) -> None:
 
         if config.eval.schedule.should_run(step=step, max_steps=len(data_loader_train)):
             eval_loss = evals.evaluate(
-                tag=config.tag,
-                step=step,
                 model=model,
-                output_config=config.output,
                 data_loader_eval=data_loader_eval,
             )
             bar.set_postfix(eval=eval_loss.loss.item())
             if config.use_wandb:
-                wandb.log(
-                    {
-                        "evals/loss/loss": loss_values.loss.item(),
-                        "evals/loss/time": loss_values.time_loss.item(),
-                        "evals/loss/note_on": loss_values.note_on_loss.item(),
-                        "evals/loss/note_off": loss_values.note_off_loss.item(),
-                        "evals/loss/end": loss_values.end_loss.item(),
-                        "evals/loss/key_signature": (
-                            loss_values.key_signature_loss.item()
-                        ),
-                    }
-                )
+                eval_metrics = {
+                    "evals/loss/loss": eval_loss.loss.item(),
+                }
+                for loss_name, loss_values in eval_loss.range_stats.items():
+                    eval_metrics.update(
+                        {
+                            f"evals/loss/values/{loss_name}": loss_values.value.item(),
+                            f"evals/loss/entropy/{loss_name}": (
+                                loss_values.entropy.item()
+                            ),
+                            f"evals/loss/target_entropy/{loss_name}": (
+                                loss_values.target_entropy.item()
+                            ),
+                            f"evals/loss/num_predicted/{loss_name}": (
+                                loss_values.num_predicted.item()
+                            ),
+                            f"evals/loss/num_target/{loss_name}": (
+                                loss_values.num_target.item()
+                            ),
+                        }
+                    )
+                wandb.log(eval_metrics)
 
 
 if __name__ == "__main__":

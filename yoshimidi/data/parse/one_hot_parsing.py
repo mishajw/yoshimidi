@@ -69,7 +69,6 @@ def _fill_non_pause_fields(
     key_signature_mask = input[:, TOKEN_FIELDS.index("kind")] == KINDS.index(
         "key_signature"
     )
-    print("ksm", key_signature_mask.sum())
     non_pause_tokens[key_signature_mask] = (
         input[key_signature_mask, TOKEN_FIELDS.index("key_signature")] + indices_used
     )

@@ -7,71 +7,72 @@ from yoshimidi.data.parse import one_hot_parsing
 
 
 @dataclass
-class LossValues:
+class LossAndStats:
+    @dataclass
+    class LossStat:
+        value: torch.Tensor
+        entropy: torch.Tensor
+        target_entropy: torch.Tensor
+        num_predicted: torch.Tensor
+        num_target: torch.Tensor
+
     loss: torch.Tensor
-    time_loss: torch.Tensor
-    note_on_loss: torch.Tensor
-    note_off_loss: torch.Tensor
-    end_loss: torch.Tensor
-    key_signature_loss: torch.Tensor
+    range_stats: dict[one_hot_parsing.OneHotRange, LossStat]
+    # time: LossStat
+    # note_on: LossStat
+    # note_off: LossStat
+    # end: LossStat
+    # key_signature: LossStat
 
 
 def autoregressive_midi_loss(
     *,
     batch: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
     logits: Float[torch.Tensor, "batch seq vocab"],  # noqa: F722
-) -> LossValues:
-    labels = torch.flatten(batch[:, 1:, :], start_dim=0, end_dim=1)
-    logits = torch.flatten(logits[:, :-1, :], start_dim=0, end_dim=1)
+) -> LossAndStats:
+    labels = batch[:, 1:, :]
+    logits = logits[:, :-1, :]
 
-    pause_loss = None
-    note_on_loss = None
-    note_off_loss = None
-    end_loss = None
-    key_signature_loss = None
-
+    range_stats: dict[one_hot_parsing.OneHotRange, LossAndStats.LossStat] = dict()
     for one_hot_range in one_hot_parsing.ONE_HOT_RANGE_LENGTHS:
         start, end = one_hot_parsing.piece_range(one_hot_range)
-        range_loss = torch.nn.functional.cross_entropy(
+        loss_value = torch.nn.functional.cross_entropy(
             _reduce_to_range(logits, start, end),
             _reduce_to_range(labels, start, end),
         )
-        if one_hot_range == "pause":
-            pause_loss = range_loss
-        elif one_hot_range == "note_on":
-            note_on_loss = range_loss
-        elif one_hot_range == "note_off":
-            note_off_loss = range_loss
-        elif one_hot_range == "end":
-            end_loss = range_loss
-        elif one_hot_range == "key_signature":
-            key_signature_loss = range_loss
-        else:
-            raise ValueError(one_hot_range)
-
-    assert pause_loss is not None
-    assert note_on_loss is not None
-    assert note_off_loss is not None
-    assert end_loss is not None
-    assert key_signature_loss is not None
+        loss_entropy = _entropy(logits[:, :, start:end])
+        loss_target_entropy = _entropy(labels[:, :, start:end])
+        range_stats[one_hot_range] = LossAndStats.LossStat(
+            value=loss_value,
+            entropy=loss_entropy,
+            target_entropy=loss_target_entropy,
+            num_predicted=_num_in_range(logits, start, end),
+            num_target=_num_in_range(labels, start, end),
+        )
 
     loss = torch.nn.functional.cross_entropy(
         logits,
         labels,
     )
-    return LossValues(
+    return LossAndStats(
         loss=loss,
-        time_loss=pause_loss,
-        note_on_loss=note_on_loss,
-        note_off_loss=note_off_loss,
-        end_loss=end_loss,
-        key_signature_loss=key_signature_loss,
+        range_stats=range_stats,
     )
 
 
 def _reduce_to_range(t: torch.Tensor, start: int, end: int) -> torch.Tensor:
-    non_range_sum = t[:, end:].sum(dim=1) + t[:, :start].sum(dim=1)
+    non_range_sum = t[:, :, end:].sum(dim=2) + t[:, :, :start].sum(dim=2)
     return torch.concat(
-        [t[:, start:end], non_range_sum.unsqueeze(1)],
-        dim=1,
+        [t[:, :, start:end], non_range_sum.unsqueeze(2)],
+        dim=2,
     )
+
+
+def _entropy(logits: torch.Tensor) -> torch.Tensor:
+    mean_probs = torch.nn.functional.softmax(logits, dim=2).mean(dim=(0, 1))
+    return -torch.sum(mean_probs * torch.log(mean_probs + 1e-9))
+
+
+def _num_in_range(t: torch.Tensor, start: int, end: int) -> torch.Tensor:
+    in_range = (t.argmax(dim=2) >= start) & (t.argmax(dim=2) < end)
+    return in_range.float().mean()

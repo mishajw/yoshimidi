@@ -11,7 +11,7 @@ from yoshimidi.data.parse import one_hot_parsing, token_parsing
 
 
 @dataclass
-class MidiDataset(Dataset):
+class MidiDataset(Dataset[Tensor]):
     context_window: int
     device: torch.device
     dtype: torch.dtype

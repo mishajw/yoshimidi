@@ -3,8 +3,8 @@ import tqdm
 from pydantic import BaseModel
 from torch.utils.data import DataLoader
 
-from yoshimidi.output_config import OutputConfig
-from yoshimidi.train.midi_loss import LossValues, autoregressive_midi_loss
+from yoshimidi.data.parse import one_hot_parsing
+from yoshimidi.train.midi_loss import LossAndStats, autoregressive_midi_loss
 from yoshimidi.train.step_schedule import StepSchedule
 from yoshimidi.train.transformer import Transformer
 
@@ -17,25 +17,35 @@ class EvalConfig(BaseModel, extra="forbid"):
 
 @torch.no_grad()
 def evaluate(
-    tag: str,
-    step: int,
     model: Transformer,
-    output_config: OutputConfig,
     *,
     data_loader_eval: DataLoader[torch.Tensor],
-) -> LossValues:
+) -> LossAndStats:
     model.eval()
-    losses: list[LossValues] = []
+    losses: list[LossAndStats] = []
     for batch in tqdm.tqdm(data_loader_eval, desc="Evaluating"):
         logits = model(batch)
         losses.append(autoregressive_midi_loss(batch=batch, logits=logits))
-    return LossValues(
+    return LossAndStats(
         loss=torch.stack([loss.loss for loss in losses]).mean(),
-        note_on_loss=torch.stack([loss.note_on_loss for loss in losses]).mean(),
-        note_off_loss=torch.stack([loss.note_off_loss for loss in losses]).mean(),
-        end_loss=torch.stack([loss.end_loss for loss in losses]).mean(),
-        time_loss=torch.stack([loss.time_loss for loss in losses]).mean(),
-        key_signature_loss=torch.stack(
-            [loss.key_signature_loss for loss in losses]
-        ).mean(),
+        range_stats={
+            one_hot_range: LossAndStats.LossStat(
+                value=torch.stack(
+                    [loss.range_stats[one_hot_range].value for loss in losses]
+                ).mean(),
+                entropy=torch.stack(
+                    [loss.range_stats[one_hot_range].entropy for loss in losses]
+                ).mean(),
+                target_entropy=torch.stack(
+                    [loss.range_stats[one_hot_range].target_entropy for loss in losses]
+                ).mean(),
+                num_predicted=torch.stack(
+                    [loss.range_stats[one_hot_range].num_predicted for loss in losses]
+                ).mean(),
+                num_target=torch.stack(
+                    [loss.range_stats[one_hot_range].num_target for loss in losses]
+                ).mean(),
+            )
+            for one_hot_range in one_hot_parsing.ONE_HOT_RANGE_LENGTHS
+        },
     )
