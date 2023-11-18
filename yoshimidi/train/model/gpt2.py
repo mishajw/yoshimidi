@@ -66,7 +66,7 @@ class _Gpt2Block(torch.nn.Module):
     ) -> Float[torch.Tensor, "batch seq resid"]:  # noqa: F722
         # [1]
         residual_stream = self.layer_norm_attention(residual_stream)
-        residual_stream += self.attention(residual_stream)
+        residual_stream = residual_stream + self.attention(residual_stream)
         residual_stream = self.layer_norm_mlp(residual_stream)
-        residual_stream += self.mlp(residual_stream)
+        residual_stream = residual_stream + self.mlp(residual_stream)
         return residual_stream
