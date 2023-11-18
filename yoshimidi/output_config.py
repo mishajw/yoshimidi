@@ -1,9 +1,16 @@
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import BaseModel
 
 _CHECKPOINT_NAME_REGEX = re.compile(r"step_(\d+)")
+
+
+@dataclass
+class CheckpointInfo:
+    index: int
+    path: Path
 
 
 class OutputConfig(BaseModel, extra="forbid"):
@@ -24,18 +31,18 @@ class OutputConfig(BaseModel, extra="forbid"):
     def get_checkpoint(self, tag: str, step: int) -> Path:
         return self.checkpoints / tag / f"step_{step:06d}"
 
-    def get_all_checkpoints(self, tag: str) -> list[Path]:
+    def get_all_checkpoints(self, tag: str) -> list[CheckpointInfo]:
         batch_paths = list((self.checkpoints / tag).iterdir())
         assert len(batch_paths) > 0, (self, tag)
-        assert all(
-            _CHECKPOINT_NAME_REGEX.fullmatch(p.name) is not None for p in batch_paths
-        ), batch_paths
-        return sorted(
-            batch_paths,
-            key=lambda p: int(
-                _CHECKPOINT_NAME_REGEX.fullmatch(p.name).group(1),  # type: ignore
-            ),
-        )
+        checkpoints: list[CheckpointInfo] = []
+        for p in batch_paths:
+            match = _CHECKPOINT_NAME_REGEX.fullmatch(p.name)
+            assert match is not None, p
+            index = int(match.group(1))
+            checkpoint = CheckpointInfo(index=index, path=p)
+            checkpoints.append(checkpoint)
+        checkpoints.sort(key=lambda x: x.index)
+        return checkpoints
 
     def get_latest_checkpoint(self, tag: str) -> Path:
-        return self.get_all_checkpoints(tag=tag)[-1]
+        return self.get_all_checkpoints(tag=tag)[-1].path

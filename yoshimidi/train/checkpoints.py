@@ -1,3 +1,4 @@
+import shutil
 from typing import Literal
 
 import toml
@@ -42,7 +43,11 @@ def save_checkpoint(
     with open(checkpoint_dir / "training_config.toml", "w") as f:
         toml.dump(training_config.model_dump(), f)
 
-    # TODO: Implement rolling.
+    _handle_rolling_checkpoints(
+        checkpoint_config=checkpoint_config,
+        output_config=output_config,
+        tag=tag,
+    )
 
 
 def load_checkpoint(
@@ -72,3 +77,18 @@ def load_checkpoint(
     )
 
     return model, optimizer
+
+
+def _handle_rolling_checkpoints(
+    checkpoint_config: CheckpointConfig, output_config: OutputConfig, tag: str
+) -> None:
+    if checkpoint_config.rolling is None:
+        return
+
+    checkpoint_dirs = output_config.get_all_checkpoints(tag=tag)
+    checkpoint_dirs.sort(key=lambda c: c.index, reverse=True)
+    checkpoints_to_delete = checkpoint_dirs[: -checkpoint_config.rolling]
+
+    for checkpoint in checkpoints_to_delete:
+        logger.info("Deleting checkpoint: {}", checkpoint.path)
+        shutil.rmtree(checkpoint.path)
