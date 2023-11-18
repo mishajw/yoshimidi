@@ -20,7 +20,6 @@ from yoshimidi.data.parse.tracks import Channel, KeySignature, Note
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints
 from yoshimidi.train.midi_activation import midi_activation
-from yoshimidi.train.model.transformer import Transformer
 
 SYNTH_KEYS = [
     pygame.locals.K_q,
@@ -230,7 +229,7 @@ def _key_presses_to_notes(
 
 
 def _get_model_distribution(
-    model: Transformer,
+    model: torch.nn.Module,
     resolved_key_presses: list[ResolvedKeyPress],
     now: datetime,
     temperature: float,

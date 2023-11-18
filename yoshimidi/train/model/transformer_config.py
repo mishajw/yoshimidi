@@ -1,7 +1,10 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
 class TransformerConfig(BaseModel, extra="forbid"):
+    type: Literal["gpt", "gpt2"]
     num_layers: int
     residual_stream_size: int  # d_model
     num_attention_heads: int  # h

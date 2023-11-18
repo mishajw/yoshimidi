@@ -7,7 +7,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from yoshimidi.output_config import OutputConfig
-from yoshimidi.train.model.transformer import Transformer
+from yoshimidi.train.model import transformer
 from yoshimidi.train.model.transformer_config import TransformerConfig
 from yoshimidi.train.step_schedule import StepSchedule
 from yoshimidi.train.training_config import TrainingConfig
@@ -22,7 +22,7 @@ class CheckpointConfig(BaseModel, extra="forbid"):
 def save_checkpoint(
     tag: str,
     step: int,
-    model: Transformer,
+    model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     transformer_config: TransformerConfig,
     training_config: TrainingConfig,
@@ -55,7 +55,7 @@ def load_checkpoint(
     step: int | Literal["latest"],
     output_config: OutputConfig,
     device: torch.device,
-) -> tuple[Transformer, torch.optim.Optimizer]:
+) -> tuple[torch.nn.Module, torch.optim.Optimizer]:
     if step == "latest":
         checkpoint_dir = output_config.get_latest_checkpoint(tag=tag)
     else:
@@ -65,7 +65,7 @@ def load_checkpoint(
     transformer_config_path = checkpoint_dir / "transformer_config.toml"
     with open(transformer_config_path, "r") as f:
         transformer_config = TransformerConfig.model_validate(toml.load(f))
-    model = Transformer(transformer_config)
+    model = transformer.load_model(transformer_config)
     model.load_state_dict(torch.load(checkpoint_dir / "model.pt", map_location=device))
 
     training_config_path = checkpoint_dir / "training_config.toml"

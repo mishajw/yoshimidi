@@ -18,7 +18,7 @@ from yoshimidi.train.checkpoints import CheckpointConfig
 from yoshimidi.train.evals import EvalConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
-from yoshimidi.train.model.transformer import Transformer
+from yoshimidi.train.model import transformer
 from yoshimidi.train.model.transformer_config import TransformerConfig
 from yoshimidi.train.training_config import TrainingConfig
 
@@ -79,7 +79,7 @@ def main(config_path: str) -> None:
     logger.debug(f"Num batches (eval): {len(data_loader_eval):.2E}")
 
     logger.debug("Loading model")
-    model = Transformer(config.transformer).to(
+    model = transformer.load_model(config.transformer).to(
         device=config.training.torch_device(), dtype=config.training.torch_dtype()
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=config.training.learning_rate)

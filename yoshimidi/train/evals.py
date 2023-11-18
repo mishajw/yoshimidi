@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 
 from yoshimidi.data.parse import one_hot_parsing
 from yoshimidi.train.midi_loss import LossAndStats, autoregressive_midi_loss
-from yoshimidi.train.model.transformer import Transformer
 from yoshimidi.train.step_schedule import StepSchedule
 
 
@@ -17,7 +16,7 @@ class EvalConfig(BaseModel, extra="forbid"):
 
 @torch.no_grad()
 def evaluate(
-    model: Transformer,
+    model: torch.nn.Module,
     *,
     data_loader_eval: DataLoader[torch.Tensor],
 ) -> LossAndStats:

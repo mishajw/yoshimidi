@@ -9,12 +9,11 @@ from loguru import logger
 from yoshimidi.data.parse import one_hot_parsing, token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note
 from yoshimidi.train.midi_activation import midi_activation
-from yoshimidi.train.model.transformer import Transformer
 
 
 @torch.inference_mode()
 def run_inference(
-    model: Transformer,
+    model: torch.nn.Module,
     prompt: Channel,
     device: torch.device,
     dtype: torch.dtype,
