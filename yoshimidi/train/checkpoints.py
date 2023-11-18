@@ -1,16 +1,21 @@
 from typing import Literal
 
+import toml
 import torch
 from loguru import logger
 from pydantic import BaseModel
 
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train.step_schedule import StepSchedule
+from yoshimidi.train.training_config import TrainingConfig
 from yoshimidi.train.transformer import Transformer
+from yoshimidi.train.transformer_config import TransformerConfig
 
 
 class CheckpointConfig(BaseModel, extra="forbid"):
     schedule: StepSchedule
+    # If set, we delete checkpoints that are older than this many steps.
+    rolling: int | None = 5
 
 
 def save_checkpoint(
@@ -18,35 +23,52 @@ def save_checkpoint(
     step: int,
     model: Transformer,
     optimizer: torch.optim.Optimizer,
+    transformer_config: TransformerConfig,
+    training_config: TrainingConfig,
+    checkpoint_config: CheckpointConfig,
     output_config: OutputConfig,
 ) -> None:
-    checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
-    logger.info("Saving checkpoint: {}", checkpoint_path)
-    assert not checkpoint_path.exists(), f"Checkpoint already exists: {checkpoint_path}"
-    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-        },
-        checkpoint_path,
-    )
+    checkpoint_dir = output_config.get_checkpoint(tag=tag, step=step)
+    assert (
+        not checkpoint_dir.exists()
+    ), f"Checkpoint directory already exists: {checkpoint_dir}"
+    logger.info("Saving checkpoint: {}", checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+    torch.save(model.state_dict(), checkpoint_dir / "model.pt")
+    torch.save(optimizer.state_dict(), checkpoint_dir / "optimizer.pt")
+    with open(checkpoint_dir / "transformer_config.toml", "w") as f:
+        toml.dump(transformer_config.model_dump(), f)
+    with open(checkpoint_dir / "training_config.toml", "w") as f:
+        toml.dump(training_config.model_dump(), f)
+
+    # TODO: Implement rolling.
 
 
 def load_checkpoint(
     tag: str,
     step: int | Literal["latest"],
-    model: Transformer,
-    optimizer: torch.optim.Optimizer,
     output_config: OutputConfig,
     device: torch.device,
 ) -> tuple[Transformer, torch.optim.Optimizer]:
     if step == "latest":
-        checkpoint_path = output_config.get_latest_checkpoint(tag=tag)
+        checkpoint_dir = output_config.get_latest_checkpoint(tag=tag)
     else:
-        checkpoint_path = output_config.get_checkpoint(tag=tag, step=step)
-    logger.info("Loading checkpoint: {}", checkpoint_path)
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        checkpoint_dir = output_config.get_checkpoint(tag=tag, step=step)
+    logger.info("Loading checkpoint: {}", checkpoint_dir)
+
+    transformer_config_path = checkpoint_dir / "transformer_config.toml"
+    with open(transformer_config_path, "r") as f:
+        transformer_config = TransformerConfig.model_validate(toml.load(f))
+    model = Transformer(transformer_config)
+    model.load_state_dict(torch.load(checkpoint_dir / "model.pt", map_location=device))
+
+    training_config_path = checkpoint_dir / "training_config.toml"
+    with open(training_config_path, "r") as f:
+        training_config = TrainingConfig.model_validate(toml.load(f))
+    optimizer = torch.optim.Adam(model.parameters(), lr=training_config.learning_rate)
+    optimizer.load_state_dict(
+        torch.load(checkpoint_dir / "optimizer.pt", map_location=device)
+    )
+
     return model, optimizer

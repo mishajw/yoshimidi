@@ -145,6 +145,9 @@ def main(config_path: str) -> None:
                 step=step,
                 model=model,
                 optimizer=optimizer,
+                transformer_config=config.transformer,
+                training_config=config.training,
+                checkpoint_config=config.checkpoint,
                 output_config=config.output,
             )
 

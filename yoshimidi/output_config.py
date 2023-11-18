@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-_CHECKPOINT_NAME_REGEX = re.compile(r"step_(\d+)\.pt")
+_CHECKPOINT_NAME_REGEX = re.compile(r"step_(\d+)")
 
 
 class OutputConfig(BaseModel, extra="forbid"):
@@ -22,9 +22,9 @@ class OutputConfig(BaseModel, extra="forbid"):
         return (self.checkpoints / tag).exists()
 
     def get_checkpoint(self, tag: str, step: int) -> Path:
-        return self.checkpoints / tag / f"step_{step:06d}.pt"
+        return self.checkpoints / tag / f"step_{step:06d}"
 
-    def get_latest_checkpoint(self, tag: str) -> Path:
+    def get_all_checkpoints(self, tag: str) -> list[Path]:
         batch_paths = list((self.checkpoints / tag).iterdir())
         assert len(batch_paths) > 0, (self, tag)
         assert all(
@@ -35,5 +35,7 @@ class OutputConfig(BaseModel, extra="forbid"):
             key=lambda p: int(
                 _CHECKPOINT_NAME_REGEX.fullmatch(p.name).group(1),  # type: ignore
             ),
-            reverse=True,
-        )[0]
+        )
+
+    def get_latest_checkpoint(self, tag: str) -> Path:
+        return self.get_all_checkpoints(tag=tag)[-1]

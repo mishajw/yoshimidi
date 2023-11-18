@@ -21,7 +21,6 @@ from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints
 from yoshimidi.train.midi_activation import midi_activation
 from yoshimidi.train.transformer import Transformer
-from yoshimidi.train.transformer_config import TransformerConfig
 
 SYNTH_KEYS = [
     pygame.locals.K_q,
@@ -75,20 +74,9 @@ def main(
     synth_soundfont = synth.sfload(soundfont_path)
     synth.program_select(0, synth_soundfont, 0, 0)
 
-    model = Transformer(
-        TransformerConfig(
-            num_layers=6,
-            residual_stream_size=512,
-            num_attention_heads=16,
-            context_window=1024,
-        )
-    )
-    optimizer = torch.optim.Adam(model.parameters())
-    model, optimizer = checkpoints.load_checkpoint(
+    model, _ = checkpoints.load_checkpoint(
         tag=model_tag,
         step="latest",
-        model=model,
-        optimizer=optimizer,
         output_config=OutputConfig(),
         device=torch.device("cpu"),
     )
