@@ -1,5 +1,5 @@
+from yoshimidi.train.model.transformer_config import TransformerConfig
 from yoshimidi.train.training_config import TrainingConfig
-from yoshimidi.train.transformer_config import TransformerConfig
 
 
 def calculate_flops(

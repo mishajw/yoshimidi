@@ -20,7 +20,7 @@ from yoshimidi.data.parse.tracks import Channel, KeySignature, Note
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints
 from yoshimidi.train.midi_activation import midi_activation
-from yoshimidi.train.transformer import Transformer
+from yoshimidi.train.model.transformer import Transformer
 
 SYNTH_KEYS = [
     pygame.locals.K_q,

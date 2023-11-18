@@ -18,9 +18,9 @@ from yoshimidi.train.checkpoints import CheckpointConfig
 from yoshimidi.train.evals import EvalConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
+from yoshimidi.train.model.transformer import Transformer
+from yoshimidi.train.model.transformer_config import TransformerConfig
 from yoshimidi.train.training_config import TrainingConfig
-from yoshimidi.train.transformer import Transformer
-from yoshimidi.train.transformer_config import TransformerConfig
 
 dotenv.load_dotenv()
 

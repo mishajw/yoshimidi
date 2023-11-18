@@ -7,10 +7,10 @@ from loguru import logger
 from pydantic import BaseModel
 
 from yoshimidi.output_config import OutputConfig
+from yoshimidi.train.model.transformer import Transformer
+from yoshimidi.train.model.transformer_config import TransformerConfig
 from yoshimidi.train.step_schedule import StepSchedule
 from yoshimidi.train.training_config import TrainingConfig
-from yoshimidi.train.transformer import Transformer
-from yoshimidi.train.transformer_config import TransformerConfig
 
 
 class CheckpointConfig(BaseModel, extra="forbid"):

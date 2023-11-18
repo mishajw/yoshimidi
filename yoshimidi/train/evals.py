@@ -5,8 +5,8 @@ from torch.utils.data import DataLoader
 
 from yoshimidi.data.parse import one_hot_parsing
 from yoshimidi.train.midi_loss import LossAndStats, autoregressive_midi_loss
+from yoshimidi.train.model.transformer import Transformer
 from yoshimidi.train.step_schedule import StepSchedule
-from yoshimidi.train.transformer import Transformer
 
 
 class EvalConfig(BaseModel, extra="forbid"):

@@ -9,7 +9,7 @@ from loguru import logger
 from yoshimidi.data.parse import one_hot_parsing, token_parsing
 from yoshimidi.data.parse.tracks import Channel, Note
 from yoshimidi.train.midi_activation import midi_activation
-from yoshimidi.train.transformer import Transformer
+from yoshimidi.train.model.transformer import Transformer
 
 
 @torch.inference_mode()
