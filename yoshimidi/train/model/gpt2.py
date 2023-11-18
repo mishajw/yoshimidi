@@ -18,7 +18,7 @@ class Gpt2(torch.nn.Module):
       - Layer normalization is moved to the input of each sub-block. [1]
       - Layer normalization is added after the final self-attention block. [2]
       - Weights of residual layers are scaled by a factor of 1/sqrt(N) where N is the
-      number of residual layers. (We don't do this in this implementation.)
+      number of residual layers. [TODO: implement this.]
     """
 
     def __init__(self, config: TransformerConfig):
