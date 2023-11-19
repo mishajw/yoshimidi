@@ -86,7 +86,7 @@ def _handle_rolling_checkpoints(
         return
 
     checkpoint_dirs = output_config.get_all_checkpoints(tag=tag)
-    checkpoint_dirs.sort(key=lambda c: c.index, reverse=True)
+    checkpoint_dirs.sort(key=lambda c: c.index)
     checkpoints_to_delete = checkpoint_dirs[: -checkpoint_config.rolling]
 
     for checkpoint in checkpoints_to_delete:
