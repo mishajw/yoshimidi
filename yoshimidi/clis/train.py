@@ -166,7 +166,7 @@ def main(config_path: str, *, resume: bool = False) -> None:
             metrics[f"loss/num_target/{loss_name}"] = loss_values.num_target.item()
         bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
         if config.use_wandb:
-            wandb.log(metrics)
+            wandb.log(metrics, step=step)
 
         checkpoints.maybe_save_checkpoints(
             tag=config.tag,
