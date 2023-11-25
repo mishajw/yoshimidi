@@ -120,15 +120,17 @@ def main(config_path: str, *, resume: bool = False) -> None:
             _, batch = next(dataloader_iterator)
             lr_scheduler.step()
 
+    batch_start_time = datetime.now()
     for step, batch in dataloader_iterator:
         model.train()
         optimizer.zero_grad()
-        start_time = datetime.now()
+        fwd_bwd_start_time = datetime.now()
         logits = model(batch)
         loss_and_stats = autoregressive_midi_loss(batch=batch, logits=logits)
         loss_and_stats.loss.backward()
         optimizer.step()
-        time_per_batch_secs = (datetime.now() - start_time).total_seconds()
+        time_per_batch_secs = (datetime.now() - batch_start_time).total_seconds()
+        time_per_fwd_bwd_secs = (datetime.now() - fwd_bwd_start_time).total_seconds()
         flops = calculate_flops(
             config.transformer, config.training, time_per_batch_secs
         )
@@ -138,6 +140,7 @@ def main(config_path: str, *, resume: bool = False) -> None:
             "lr": lr,
             # Perf:
             "perf/time_per_batch_secs": time_per_batch_secs,
+            "perf/time_per_fwd_bwd_secs": time_per_fwd_bwd_secs,
             "perf/flops": flops,
             # Norms:
             **{
