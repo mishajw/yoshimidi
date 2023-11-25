@@ -15,6 +15,7 @@ device = "cuda"
 dtype = "float32"
 
 [checkpoint.schedule]
+# We dedicate 4GB of disk space to checkpoints (16GB total - 8GB dataset - 4GB buffer).
 # We have space for ~16 checkpoints (4GB disk / 240MB checkpoints).
 # We run for 1.6e6 steps, so we save every 1e5 steps.
 every_n_steps = 1e5
