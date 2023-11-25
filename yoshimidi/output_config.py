@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -28,8 +29,11 @@ class OutputConfig(BaseModel, extra="forbid"):
     def has_checkpoints(self, tag: str) -> bool:
         return (self.checkpoints / tag).exists()
 
-    def get_checkpoint(self, tag: str, step: int) -> Path:
-        return self.checkpoints / tag / f"step_{step:06d}"
+    def get_checkpoint(self, tag: str, step: int | Literal["rolling"]) -> Path:
+        if step == "rolling":
+            return self.checkpoints / tag / "rolling"
+        else:
+            return self.checkpoints / tag / f"step_{step:06d}"
 
     def get_all_checkpoints(self, tag: str) -> list[CheckpointInfo]:
         batch_paths = list((self.checkpoints / tag).iterdir())

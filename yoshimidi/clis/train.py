@@ -145,19 +145,17 @@ def main(config_path: str) -> None:
         if config.use_wandb:
             wandb.log(metrics)
 
-        if config.checkpoint.schedule.should_run(
-            step=step, max_steps=len(data_loader_train)
-        ):
-            checkpoints.save_checkpoint(
-                tag=config.tag,
-                step=step,
-                model=model,
-                optimizer=optimizer,
-                transformer_config=config.transformer,
-                training_config=config.training,
-                checkpoint_config=config.checkpoint,
-                output_config=config.output,
-            )
+        checkpoints.maybe_save_checkpoints(
+            tag=config.tag,
+            step=step,
+            max_steps=len(data_loader_train),
+            model=model,
+            optimizer=optimizer,
+            transformer_config=config.transformer,
+            training_config=config.training,
+            checkpoint_config=config.checkpoint,
+            output_config=config.output,
+        )
 
         if config.eval.schedule.should_run(step=step, max_steps=len(data_loader_train)):
             eval_loss = evals.evaluate(

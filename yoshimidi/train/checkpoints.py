@@ -1,4 +1,6 @@
 import shutil
+import tempfile
+from pathlib import Path
 from typing import Literal
 
 import toml
@@ -15,13 +17,13 @@ from yoshimidi.train.training_config import TrainingConfig
 
 class CheckpointConfig(BaseModel, extra="forbid"):
     schedule: StepSchedule
-    # If set, we delete checkpoints that are older than this many steps.
-    rolling: int | None = 5
+    rolling_schedule: StepSchedule
 
 
-def save_checkpoint(
+def maybe_save_checkpoints(
     tag: str,
     step: int,
+    max_steps: int,
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     transformer_config: TransformerConfig,
@@ -29,25 +31,28 @@ def save_checkpoint(
     checkpoint_config: CheckpointConfig,
     output_config: OutputConfig,
 ) -> None:
-    checkpoint_dir = output_config.get_checkpoint(tag=tag, step=step)
-    assert (
-        not checkpoint_dir.exists()
-    ), f"Checkpoint directory already exists: {checkpoint_dir}"
-    logger.info("Saving checkpoint: {}", checkpoint_dir)
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
-
-    torch.save(model.state_dict(), checkpoint_dir / "model.pt")
-    torch.save(optimizer.state_dict(), checkpoint_dir / "optimizer.pt")
-    with open(checkpoint_dir / "transformer_config.toml", "w") as f:
-        toml.dump(transformer_config.model_dump(), f)
-    with open(checkpoint_dir / "training_config.toml", "w") as f:
-        toml.dump(training_config.model_dump(), f)
-
-    _handle_rolling_checkpoints(
-        checkpoint_config=checkpoint_config,
-        output_config=output_config,
-        tag=tag,
-    )
+    if checkpoint_config.schedule.should_run(step=step, max_steps=max_steps):
+        _save_checkpoint_using_tmp(
+            tag=tag,
+            step=step,
+            model=model,
+            optimizer=optimizer,
+            transformer_config=transformer_config,
+            training_config=training_config,
+            output_config=output_config,
+            check_exists=True,
+        )
+    if checkpoint_config.rolling_schedule.should_run(step=step, max_steps=max_steps):
+        _save_checkpoint_using_tmp(
+            tag=tag,
+            step="rolling",
+            model=model,
+            optimizer=optimizer,
+            transformer_config=transformer_config,
+            training_config=training_config,
+            output_config=output_config,
+            check_exists=False,
+        )
 
 
 def load_checkpoint(
@@ -79,16 +84,49 @@ def load_checkpoint(
     return model, optimizer
 
 
-def _handle_rolling_checkpoints(
-    checkpoint_config: CheckpointConfig, output_config: OutputConfig, tag: str
+def _save_checkpoint_using_tmp(
+    tag: str,
+    step: int | Literal["rolling"],
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    transformer_config: TransformerConfig,
+    training_config: TrainingConfig,
+    output_config: OutputConfig,
+    check_exists: bool,
 ) -> None:
-    if checkpoint_config.rolling is None:
-        return
+    checkpoint_dir = output_config.get_checkpoint(tag=tag, step=step)
+    logger.info("Saving checkpoint: {}", checkpoint_dir)
+    checkpoint_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=checkpoint_dir.parent) as temp_dir_str:
+        temp_dir = Path(temp_dir_str)
+        _save_checkpoint(
+            output_dir=temp_dir,
+            model=model,
+            optimizer=optimizer,
+            transformer_config=transformer_config,
+            training_config=training_config,
+        )
+        if check_exists:
+            assert (
+                not checkpoint_dir.exists()
+            ), f"Checkpoint directory already exists: {checkpoint_dir}"
+        elif checkpoint_dir.exists():
+            shutil.rmtree(checkpoint_dir)
+        temp_dir.rename(checkpoint_dir)
+        logger.info(f"Checkpoint saved: {checkpoint_dir}")
 
-    checkpoint_dirs = output_config.get_all_checkpoints(tag=tag)
-    checkpoint_dirs.sort(key=lambda c: c.index)
-    checkpoints_to_delete = checkpoint_dirs[: -checkpoint_config.rolling]
 
-    for checkpoint in checkpoints_to_delete:
-        logger.info("Deleting checkpoint: {}", checkpoint.path)
-        shutil.rmtree(checkpoint.path)
+def _save_checkpoint(
+    output_dir: Path,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    transformer_config: TransformerConfig,
+    training_config: TrainingConfig,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), output_dir / "model.pt")
+    torch.save(optimizer.state_dict(), output_dir / "optimizer.pt")
+    with open(output_dir / "transformer_config.toml", "w") as f:
+        toml.dump(transformer_config.model_dump(), f)
+    with open(output_dir / "training_config.toml", "w") as f:
+        toml.dump(training_config.model_dump(), f)
