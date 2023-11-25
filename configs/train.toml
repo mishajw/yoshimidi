@@ -1,7 +1,8 @@
-tag = "2023-08-03_v1"
+tag = "2023-11-19_v1"
 use_wandb = true
 
 [transformer]
+type = "gpt2"
 num_layers = 6
 residual_stream_size = 512
 num_attention_heads = 8
@@ -13,6 +14,8 @@ learning_rate = 1e-4
 device = "cuda"
 dtype = "float32"
 
+[checkpoint]
+rolling = 10
 [checkpoint.schedule]
 every_n_steps = 500
 
