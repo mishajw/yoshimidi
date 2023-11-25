@@ -83,6 +83,15 @@ s3-download-checkpoints:
 	s5cmd sync \
 		's3://yoshimidi-v2/checkpoints/*' \
 		out/checkpoints/
+.PHONY: s3-upload-checkpoints-periodic
+s3-upload-checkpoints-periodic:
+	while true; do \
+		s5cmd sync \
+			out/checkpoints/ \
+			's3://yoshimidi-v2/checkpoints/'; \
+		sleep 300; \
+	done
+
 
 .PHONY: s3-du
 s3-du:
