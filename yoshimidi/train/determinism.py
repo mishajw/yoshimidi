@@ -13,7 +13,9 @@ import torch
 # However, we'd still need to guarantee that the tags are set properly: For example, if
 # you want to call `determinism` in a loop, you'd have to use a new tag every time.
 # While we could keep track of the tags, this would probably be inefficient (unless you
-# could do this at compile time - rewrite in Rust & use the borrow checker? :)).
+# could do this at compile time - rewrite in Rust & use the borrow checker? :)). You'd
+# have to be careful how you do this with data-parallel code, as you want to e.g. share
+# dropout masks across GPUs.
 #
 # Also, god knows how possible it is to inject code into the CUDA RNGs. Obviously
 # wouldn't be possible on the kernel-level, but perhaps at the Python API level?
