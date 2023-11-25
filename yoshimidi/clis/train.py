@@ -15,6 +15,7 @@ from yoshimidi.data.midi_dataset import MidiDataset
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints, evals
 from yoshimidi.train.checkpoints import CheckpointConfig
+from yoshimidi.train.determinism import determinism
 from yoshimidi.train.evals import EvalConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
@@ -35,6 +36,7 @@ class Config(BaseModel, extra="forbid"):
     use_wandb: bool = True
 
 
+@determinism("main")
 def main(config_path: str) -> None:
     with open(config_path) as f:
         config = Config.model_validate(toml.load(f))
@@ -56,23 +58,29 @@ def main(config_path: str) -> None:
         )
 
     logger.debug("Loading dataset")
-    dataset = MidiDataset.from_path(
-        config.output.dataset_tokenized,
-        context_window=config.transformer.context_window,
-        device=config.training.torch_device(),
-        dtype=config.training.torch_dtype(),
-    )
+    with determinism("dataset-load"):
+        dataset = MidiDataset.from_path(
+            config.output.dataset_tokenized,
+            context_window=config.transformer.context_window,
+            device=config.training.torch_device(),
+            dtype=config.training.torch_dtype(),
+        )
     # TODO: We shouldn't split on the batch-level, as the same song could be split
     # between eval and train. Instead, we should split while parsing.
-    dataset_eval, dataset_train = torch.utils.data.random_split(
-        dataset, [config.eval.split, 1 - config.eval.split]
-    )
-    data_loader_train = DataLoader(
-        dataset_train, batch_size=config.training.batch_size, shuffle=True
-    )
-    data_loader_eval = DataLoader(
-        dataset_eval, batch_size=config.eval.batch_size, shuffle=True
-    )
+    with determinism("dataset-split"):
+        dataset_eval, dataset_train = torch.utils.data.random_split(
+            dataset, [config.eval.split, 1 - config.eval.split]
+        )
+    with determinism("data-loader-train"):
+        data_loader_train = DataLoader(
+            dataset_train,
+            batch_size=config.training.batch_size,
+            shuffle=True,
+        )
+    with determinism("data-loader-eval"):
+        data_loader_eval = DataLoader(
+            dataset_eval, batch_size=config.eval.batch_size, shuffle=True
+        )
     logger.debug(f"Num tokens: {len(dataset) * config.transformer.context_window:.2E}")
     logger.debug(f"Num rows: {len(dataset):.2E}")
     logger.debug(f"Num batches: {len(data_loader_train):.2E}")
