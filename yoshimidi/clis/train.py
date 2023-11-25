@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from yoshimidi.data.midi_dataset import MidiDataset
 from yoshimidi.output_config import OutputConfig
 from yoshimidi.train import checkpoints, evals
-from yoshimidi.train.checkpoints import CheckpointConfig
+from yoshimidi.train.checkpoints import CheckpointConfig, load_checkpoint_
 from yoshimidi.train.determinism import determinism
 from yoshimidi.train.evals import EvalConfig
 from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
@@ -37,13 +37,13 @@ class Config(BaseModel, extra="forbid"):
 
 
 @determinism("main")
-def main(config_path: str) -> None:
+def main(config_path: str, *, resume: bool = False) -> None:
     with open(config_path) as f:
         config = Config.model_validate(toml.load(f))
     logger.info("Starting training")
     logger.info("Config: {}", config.model_dump_json(indent=2))
     logger.info(f"Num parameters: {calculate_num_parameters(config.transformer):.2E}")
-    assert not config.output.has_checkpoints(
+    assert resume or not config.output.has_checkpoints(
         tag=config.tag
     ), f"Checkpoints already exist for tag: {config.tag}"
 
@@ -91,16 +91,36 @@ def main(config_path: str) -> None:
         device=config.training.torch_device(), dtype=config.training.torch_dtype()
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=config.training.learning_rate)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer=optimizer,
-        T_max=len(data_loader_train),
-    )
     logger.debug(
         f"Num loaded parameters: {sum(p.numel() for p in model.parameters()):.2E}"
     )
 
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=optimizer,
+        T_max=len(data_loader_train),
+    )
     bar = tqdm.tqdm(data_loader_train, desc="Training")
-    for step, batch in enumerate(bar):
+    dataloader_iterator = enumerate(bar)
+
+    if resume:
+        logger.info("Resuming from checkpoint")
+        checkpoint_info = load_checkpoint_(
+            config.tag,
+            step="latest",
+            output_config=config.output,
+            device=config.training.torch_device(),
+            model=model,
+            optimizer=optimizer,
+        )
+        assert checkpoint_info.step != "rolling", checkpoint_info
+
+        logger.debug(f"Fast-forwarding {checkpoint_info.step} steps")
+        # We add one: the checkpoint is saved after the step is taken.
+        for step in range(checkpoint_info.step + 1):
+            _, batch = next(dataloader_iterator)
+            lr_scheduler.step()
+
+    for step, batch in dataloader_iterator:
         model.train()
         optimizer.zero_grad()
         start_time = datetime.now()

@@ -1,16 +1,14 @@
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+import toml
 from pydantic import BaseModel
-
-_CHECKPOINT_NAME_REGEX = re.compile(r"step_(\d+)")
 
 
 @dataclass
 class CheckpointInfo:
-    index: int
+    step: int
     path: Path
 
 
@@ -29,8 +27,12 @@ class OutputConfig(BaseModel, extra="forbid"):
     def has_checkpoints(self, tag: str) -> bool:
         return (self.checkpoints / tag).exists()
 
-    def get_checkpoint(self, tag: str, step: int | Literal["rolling"]) -> Path:
-        if step == "rolling":
+    def get_checkpoint(
+        self, tag: str, step: int | Literal["rolling", "latest"]
+    ) -> Path:
+        if step == "latest":
+            return self.get_all_checkpoints(tag=tag)[-1].path
+        elif step == "rolling":
             return self.checkpoints / tag / "rolling"
         else:
             return self.checkpoints / tag / f"step_{step:06d}"
@@ -40,13 +42,12 @@ class OutputConfig(BaseModel, extra="forbid"):
         assert len(batch_paths) > 0, (self, tag)
         checkpoints: list[CheckpointInfo] = []
         for p in batch_paths:
-            match = _CHECKPOINT_NAME_REGEX.fullmatch(p.name)
-            assert match is not None, p
-            index = int(match.group(1))
-            checkpoint = CheckpointInfo(index=index, path=p)
+            checkpoint_info_file = p / "checkpoint_info.toml"
+            with open(checkpoint_info_file, "r") as f:
+                checkpoint_info = toml.load(f)
+            step = checkpoint_info["step"]
+            assert isinstance(step, int), "Step field is not an integer"
+            checkpoint = CheckpointInfo(step=step, path=p)
             checkpoints.append(checkpoint)
-        checkpoints.sort(key=lambda x: x.index)
+        checkpoints.sort(key=lambda x: x.step)
         return checkpoints
-
-    def get_latest_checkpoint(self, tag: str) -> Path:
-        return self.get_all_checkpoints(tag=tag)[-1].path

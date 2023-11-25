@@ -55,6 +55,10 @@ tokenize:
 train:
 	poetry run python yoshimidi/clis/train.py $(TRAIN_CONFIG)
 
+.PHONY: train-resume
+train-resume:
+	poetry run python yoshimidi/clis/train.py $(TRAIN_CONFIG) --resume
+
 # S3
 # ==
 
