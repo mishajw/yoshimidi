@@ -35,23 +35,27 @@ def time_from_uint8(time_uint8: int | float) -> float:
     return time
 
 
-def time_uint8_to_support(time: int, output: torch.Tensor) -> None:
-    assert time >= 0
-    assert output.shape == (len(_TIME_SUPPORTS),)
-    if time == 0:
-        output[0] = 1
-        return
-    if time >= _TIME_SUPPORTS[-1]:
-        output[-1] = 1
-        return
-    upper_idx = next(i for i, support in enumerate(_TIME_SUPPORTS) if support > time)
+def time_uint8_to_support(time: torch.Tensor, output: torch.Tensor) -> None:
+    assert (time >= 0).all()
+    assert output.shape == (time.shape[0], len(_TIME_SUPPORTS)), (
+        output.shape,
+        time.shape[0],
+        len(_TIME_SUPPORTS),
+    )
+    output[time == 0, 0] = 1
+    output[time >= _TIME_SUPPORTS[-1], -1] = 1
+    upper_idx = torch.searchsorted(torch.Tensor(_TIME_SUPPORTS), time, side="right")
     lower_idx = upper_idx - 1
-    lower_support = _TIME_SUPPORTS[lower_idx]
-    upper_support = _TIME_SUPPORTS[upper_idx]
-    assert lower_support <= time < upper_support, (lower_support, time, upper_support)
+    lower_support = torch.index_select(torch.Tensor(_TIME_SUPPORTS), 0, lower_idx)
+    upper_support = torch.index_select(torch.Tensor(_TIME_SUPPORTS), 0, upper_idx)
+    assert torch.all((lower_support <= time) & (time < upper_support)), (
+        lower_support,
+        time,
+        upper_support,
+    )
     weighting = (time - lower_support) / (upper_support - lower_support)
-    output[lower_idx] = 1 - weighting
-    output[upper_idx] = weighting
+    output[torch.arange(time.size(0)), lower_idx] = 1 - weighting
+    output[torch.arange(time.size(0)), upper_idx] = weighting
 
 
 def time_uint8_from_support(support: torch.Tensor) -> float:

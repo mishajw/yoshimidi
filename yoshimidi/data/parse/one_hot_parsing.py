@@ -1,4 +1,4 @@
-from typing import Literal, Optional, cast
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -44,13 +44,13 @@ def from_tokens(
     output = torch.zeros((input.shape[0], VOCAB), device=device, dtype=dtype)
     pause_start, pause_end = piece_range("pause")
     assert pause_start == 0, pause_start
-    for seq_index in range(input_tensor.shape[0]):
-        if input_tensor[seq_index, TOKEN_FIELDS.index("kind")] != KINDS.index("pause"):
-            continue
-        time_parsing.time_uint8_to_support(
-            cast(int, input_tensor[seq_index, TOKEN_FIELDS.index("time")].item()),
-            output[seq_index, pause_start:pause_end],
-        )
+    time_parsing.time_uint8_to_support(
+        input_tensor[:, TOKEN_FIELDS.index("time")],
+        output[:, pause_start:pause_end],
+    )
+    mask = input_tensor[:, TOKEN_FIELDS.index("kind")] != KINDS.index("pause")
+    output[mask, pause_start:pause_end] = 0
+
     output[:, ONE_HOT_RANGE_LENGTHS["pause"] :] = _fill_non_pause_fields(
         input_tensor, device
     )
