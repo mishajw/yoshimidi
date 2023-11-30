@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import dotenv
 import fire
 import toml
@@ -21,6 +19,7 @@ from yoshimidi.train.flops import calculate_flops, calculate_num_parameters
 from yoshimidi.train.midi_loss import autoregressive_midi_loss
 from yoshimidi.train.model import transformer
 from yoshimidi.train.model.transformer_config import TransformerConfig
+from yoshimidi.train.timer import Timer
 from yoshimidi.train.training_config import TrainingConfig
 
 dotenv.load_dotenv()
@@ -120,28 +119,29 @@ def main(config_path: str, *, resume: bool = False) -> None:
             _, batch = next(dataloader_iterator)
             lr_scheduler.step()
 
-    batch_start_time = datetime.now()
+    timer = Timer()
+    timer.register("load-batch")
     for step, batch in dataloader_iterator:
+        timer.register("zero-grad")
         model.train()
         optimizer.zero_grad()
-        fwd_bwd_start_time = datetime.now()
+
+        timer.register("forward")
         logits = model(batch)
         loss_and_stats = autoregressive_midi_loss(batch=batch, logits=logits)
+
+        timer.register("backward")
         loss_and_stats.loss.backward()
+
+        timer.register("step")
         optimizer.step()
-        time_per_batch_secs = (datetime.now() - batch_start_time).total_seconds()
-        time_per_fwd_bwd_secs = (datetime.now() - fwd_bwd_start_time).total_seconds()
-        flops = calculate_flops(
-            config.transformer, config.training, time_per_batch_secs
-        )
         (lr,) = lr_scheduler.get_last_lr()
+        lr_scheduler.step()
+
+        timer.register("metrics")
         metrics: dict[str, float] = {
             "loss/loss": loss_and_stats.loss.item(),
             "lr": lr,
-            # Perf:
-            "perf/time_per_batch_secs": time_per_batch_secs,
-            "perf/time_per_fwd_bwd_secs": time_per_fwd_bwd_secs,
-            "perf/flops": flops,
             # Norms:
             **{
                 f"norms/{name}": param.norm().item()
@@ -164,10 +164,8 @@ def main(config_path: str, *, resume: bool = False) -> None:
                 f"loss/num_predicted/{loss_name}"
             ] = loss_values.num_predicted.item()
             metrics[f"loss/num_target/{loss_name}"] = loss_values.num_target.item()
-        bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
-        if config.use_wandb:
-            wandb.log(metrics, step=step)
 
+        timer.register("checkpoints")
         checkpoints.maybe_save_checkpoints(
             tag=config.tag,
             step=step,
@@ -180,6 +178,7 @@ def main(config_path: str, *, resume: bool = False) -> None:
             output_config=config.output,
         )
 
+        timer.register("evals")
         if config.eval.schedule.should_run(step=step, max_steps=len(data_loader_train)):
             eval_loss = evals.evaluate(
                 model=model,
@@ -210,7 +209,17 @@ def main(config_path: str, *, resume: bool = False) -> None:
                     )
                 wandb.log(eval_metrics)
 
-        lr_scheduler.step()
+        timer.register("end")
+        flops = calculate_flops(
+            config.transformer, config.training, timer.since_start().total_seconds()
+        )
+        metrics["perf/flops"] = flops
+        metrics.update(timer.timing_dict())
+        bar.set_postfix(loss=metrics["loss/loss"], flops=metrics["perf/flops"])
+        if config.use_wandb:
+            wandb.log(metrics, step=step)
+        timer = Timer()
+        timer.register("load-batch")
 
 
 if __name__ == "__main__":
