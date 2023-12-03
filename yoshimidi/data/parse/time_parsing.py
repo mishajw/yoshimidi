@@ -8,7 +8,7 @@ _TIME_SUPPORTS = [*np.arange(0, 162 + 1, 162 / 14), 255.0]
 NUM_TIME_SUPPORTS = len(_TIME_SUPPORTS)  # 16
 _TIME_LOG_MIN = -7.6246189861593985
 _TIME_LOG_MAX = 5.758507374345448
-_TIME_SUPPORTS_TORCH = torch.Tensor(_TIME_SUPPORTS)
+_time_supports_torch = torch.Tensor(_TIME_SUPPORTS)
 
 
 def time_to_uint8(time: float) -> int:
@@ -37,6 +37,9 @@ def time_from_uint8(time_uint8: int | float) -> float:
 
 
 def time_uint8_to_support(time: torch.Tensor, output: torch.Tensor) -> None:
+    global _time_supports_torch
+    if _time_supports_torch.device != time.device:
+        _time_supports_torch = _time_supports_torch.to(time.device)
     assert (time >= 0).all() and (time <= 255).all()
     assert output.shape == (time.shape[0], len(_TIME_SUPPORTS)), (
         output.shape,
@@ -44,10 +47,10 @@ def time_uint8_to_support(time: torch.Tensor, output: torch.Tensor) -> None:
         len(_TIME_SUPPORTS),
     )
     time = time.clamp(max=254)  # clamp to avoid out-of-bounds indexing
-    upper_idx = torch.searchsorted(_TIME_SUPPORTS_TORCH, time, side="right")
+    upper_idx = torch.searchsorted(_time_supports_torch, time, side="right")
     lower_idx = upper_idx - 1
-    lower_support = torch.index_select(_TIME_SUPPORTS_TORCH, 0, lower_idx)
-    upper_support = torch.index_select(_TIME_SUPPORTS_TORCH, 0, upper_idx)
+    lower_support = torch.index_select(_time_supports_torch, 0, lower_idx)
+    upper_support = torch.index_select(_time_supports_torch, 0, upper_idx)
     assert torch.all((lower_support <= time) & (time <= upper_support)), (
         lower_support,
         time,
