@@ -1,12 +1,15 @@
 import torch
 from pydantic import BaseModel, validator
 
+from yoshimidi.train.step_schedule import StepSchedule
+
 
 class TrainingConfig(BaseModel, extra="forbid"):
     batch_size: int
     learning_rate: float
     device: str
     dtype: str
+    metrics_schedule: StepSchedule
 
     def torch_device(self) -> torch.device:
         return torch.device(self.device)

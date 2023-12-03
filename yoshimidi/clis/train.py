@@ -128,6 +128,7 @@ def main(config_path: str, *, resume: bool = False) -> None:
 
         timer.register("forward")
         logits = model(batch)
+        timer.register("forward-loss")
         loss_and_stats = autoregressive_midi_loss(batch=batch, logits=logits)
 
         timer.register("backward")
@@ -142,18 +143,8 @@ def main(config_path: str, *, resume: bool = False) -> None:
         metrics: dict[str, float] = {
             "loss/loss": loss_and_stats.loss.item(),
             "lr": lr,
-            # Norms:
-            **{
-                f"norms/{name}": param.norm().item()
-                for name, param in model.named_parameters()
-            },
-            **{
-                f"grad_norms/{name}": param.grad.norm().item()
-                if param.grad is not None
-                else -1
-                for name, param in model.named_parameters()
-            },
         }
+        timer.register("metrics-loss")
         for loss_name, loss_values in loss_and_stats.range_stats.items():
             metrics[f"loss/values/{loss_name}"] = loss_values.value.item()
             metrics[f"loss/entropy/{loss_name}"] = loss_values.entropy.item()
@@ -164,6 +155,24 @@ def main(config_path: str, *, resume: bool = False) -> None:
                 f"loss/num_predicted/{loss_name}"
             ] = loss_values.num_predicted.item()
             metrics[f"loss/num_target/{loss_name}"] = loss_values.num_target.item()
+        timer.register("metrics-norms")
+        if config.training.metrics_schedule.should_run(
+            step=step, max_steps=len(data_loader_train)
+        ):
+            metrics.update(
+                {
+                    **{
+                        f"norms/{name}": param.norm().item()
+                        for name, param in model.named_parameters()
+                    },
+                    **{
+                        f"grad_norms/{name}": param.grad.norm().item()
+                        if param.grad is not None
+                        else -1
+                        for name, param in model.named_parameters()
+                    },
+                }
+            )
 
         timer.register("checkpoints")
         checkpoints.maybe_save_checkpoints(
