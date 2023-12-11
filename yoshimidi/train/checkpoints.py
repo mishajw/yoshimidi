@@ -63,7 +63,7 @@ def maybe_save_checkpoints(
 
 def load_checkpoint(
     tag: str,
-    step: int | Literal["latest"],
+    step: int | Literal["latest", "rolling"],
     output_config: OutputConfig,
     device: torch.device,
 ) -> tuple[torch.nn.Module, torch.optim.Optimizer, CheckpointInfo]:
@@ -92,7 +92,7 @@ def load_checkpoint(
 
 def load_checkpoint_(
     tag: str,
-    step: int | Literal["latest"],
+    step: int | Literal["latest", "rolling"],
     output_config: OutputConfig,
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
